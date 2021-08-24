@@ -579,6 +579,14 @@ function prepTurn(color)
     for _, ownCard in ipairs(tblZonOwned[color].getObjects()) do
         strName = ownCard.getName()
 
+        if booFinalRollOff then
+            if strName == 'Royal Decree' then
+                addRollDice(true, 2, 3)
+            elseif strName == 'Royal Death' then
+                addRollDice(true, 2, 2)
+            end
+        end
+
         if strName == 'Herder' then
             booHerderEligibility = true
         else
@@ -731,8 +739,6 @@ function activateRollCard(object, color, altClick)
             addRollDice(false, 1, 1, 6)
         elseif object.getName() == 'Estate Overseer' then
             addRollDice(false, 1, 1, math.min(intRolls, 6))
-        elseif object.getName() == 'Priest of the Dead' then
-            addRollDice(false, 1, 1)
 
         -- Tier 7 Yellow
         elseif object.getName() == 'Queen' then
@@ -761,11 +767,14 @@ function activateRollCard(object, color, altClick)
             gainScarab(object, color)
             addRollDice(true, 1, 1)
             flipOwnedRed(object, color)
-
         end
 
-        -- Flips the card over. One, shows that it was executed. Two, prevents clicking the button! Woo!
-        object.setRotation({0, 180, 180})
+        if object.getName() == 'Palace Key' then
+            broadcastToColor('Palace Key must be used at the start of your turn.', color, {1, 1, 1})
+        else
+            -- Flips the card over. One, shows that it was executed. Two, prevents clicking the button! Woo!
+            object.setRotation({0, 180, 180})
+        end
 
     elseif object.getName() == 'Palace Key' then
         addRollDice(true, 1, 2)
@@ -776,12 +785,20 @@ function activateRollCard(object, color, altClick)
         broadcastToColor('You must roll at least once before bringing in optional dice.', color, {1, 1, 1})
     end
 
+    if object.getName() == 'Priest of the Dead' then
+        if #zonRoll.getObjects() == 0 then
+            addRollDice(false, 1, 1)
+            object.setRotation({0, 180, 180})
+        else
+            broadcastToColor('You still have dice to roll!', color, {1, 1, 1})
+        end
+    end
+
     if object.getName() == 'Spirit of the Dead' then
         if #zonRoll.getObjects() == 0 then
             addRollDice(false, 1, 1)
             flipOwnedRed(object, color)
             object.setRotation({0, 180, 180})
-
         else
             broadcastToColor('You still have dice to roll!', color, {1, 1, 1})
         end
@@ -1274,14 +1291,16 @@ end
 
 -- Broadcast the current owner of the pharaoh to everyone
 function broadcastFinalRollOff()
-    -- -- Initial values, copied from onLoad
-    -- intFRONumber = 7
-    -- intFROValue = 0
-    -- colFROLead = 'Nobody'
-    -- booFRONewLead = false
-
     -- Run through the locked dice in the shop
-    for i, num in ipairs(tblLocked) do
+    intTempOnes = intOnes
+    intTempTwos = intTwos
+    intTempThrees = intThrees
+    intTempFours = intFours
+    intTempFives = intFives
+    intTempSixes = intSixes
+    tblTestBuy = {intTempOnes, intTempTwos, intTempThrees, intTempFours, intTempFives, intTempSixes}
+
+    for i, num in ipairs(tblTestBuy) do
         if num > intFRONumber then
             intFRONumber = num
             intFROValue = i
@@ -1326,7 +1345,7 @@ function submitFinalRollOff(object, color, altClick)
         -- tblFinalRollOff indicates who has rolled.
         table.insert(tblFinalRollOff, colCurrentPlayer)
 
-        if #tblFinalRollOff == #tblPlayers then
+        if (#tblFinalRollOff == #tblPlayers) or (getNextPlayer() == colFROLead) then
             if colFROLead == 'Nobody' then
                 broadcastToAll('Nobody can capture the pharaoh\'s attention! Gather more influence!', {1, 1, 1})
                 for _, card in ipairs(tblShopCards) do
@@ -1661,7 +1680,7 @@ end
 
 function wrapBuyTier6A4(object, color, altClick)
     if intPips >= 30 then
-        buyCard(tblShopCards[16], color, false)
+        buyCard(tblShopCards[17], color, false)
     else
         broadcastToColor('You do not have the dice to buy this card!', color, {1, 1, 1})
     end
@@ -1702,7 +1721,7 @@ end
 
 function wrapBuyTier6B4(object, color, altClick)
     if intPips >= 35 then
-        buyCard(tblShopCards[16], color, false)
+        buyCard(tblShopCards[17], color, false)
     else
         broadcastToColor('You do not have the dice to buy this card!', color, {1, 1, 1})
     end
