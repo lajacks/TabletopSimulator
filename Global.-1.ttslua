@@ -1,0 +1,2007 @@
+--[[ The onLoad event is called after the game save finishes loading. --]]
+function onLoad()
+    -- These are the containers for various game setups
+    bagBoards = getObjectFromGUID('010bee')
+    stkShop = getObjectFromGUID('e74fb5')
+
+    -- In order of shop appearance: 1 Standard, 2 Immediate, 3 Serf, 4 Artisan, 5 Noble, 6 Intrigue, 7 Voyage, 8 Decree
+    tblDice = {getObjectFromGUID('425c71'), getObjectFromGUID('b282b0'), getObjectFromGUID('8976b7'), getObjectFromGUID('5526ba'), getObjectFromGUID('ba955b'), getObjectFromGUID('4efd14'), getObjectFromGUID('80c27e'), getObjectFromGUID('5fed8b')}
+    objScarabPip = getObjectFromGUID('ca6752')
+    objScarabReroll = getObjectFromGUID('52384e')
+
+    -- Zones and text refered in functions
+    zonRoll = getObjectFromGUID('772a3c')
+    zonShop = getObjectFromGUID('1b989b')
+    txtShop = getObjectFromGUID('f12fd5')
+
+    -- Zones for each players 'inventory'
+    tblZonOwned = {Red = getObjectFromGUID('2025e1'), Green = getObjectFromGUID('d188aa'), Blue = getObjectFromGUID('102eac'), White = getObjectFromGUID('d5da86')}
+    tblZonScarabPip = {Red = getObjectFromGUID('b7d392'), Green = getObjectFromGUID('93281c'), Blue = getObjectFromGUID('d0b9c6'), White = getObjectFromGUID('efd13f')}
+    tblZonScarabReroll = {Red = getObjectFromGUID('bc3e46'), Green = getObjectFromGUID('fa4fd6'), Blue = getObjectFromGUID('3d7285'), White = getObjectFromGUID('d6d687')}
+
+    tblCoinBadOmen = {Red = getObjectFromGUID('99c3d6'), Green = getObjectFromGUID('1fc16e'), Blue = getObjectFromGUID('a733e5'), White = getObjectFromGUID('e79b16')}
+    tblCoinTreasure = {Red = getObjectFromGUID('f39532'), Green = getObjectFromGUID('abbe03'), Blue = getObjectFromGUID('452c14'), White = getObjectFromGUID('62ddfe')}
+
+    -- Buttons placed around the table
+    btnGetScarab = getObjectFromGUID('2f6406')
+    btnLoseScarabPip = getObjectFromGUID('7c2c23')
+    btnLoseScarabReroll = getObjectFromGUID('62f1aa')
+
+    btnSetUpRecommended = getObjectFromGUID('dd3ee2')
+    btnSetUpRandom = getObjectFromGUID('9ef52f')
+    btnToggleShopOverride = getObjectFromGUID('930b62')
+
+    btnRollForMe = getObjectFromGUID('7189d2')
+    btnPassTurnDelayed = getObjectFromGUID('bff56e')
+    btnSubmitFinalRollOff = getObjectFromGUID('8aecb2')
+    btnEndTurn = getObjectFromGUID('d897e4')
+
+    txtSetUpRecommended = getObjectFromGUID('eed673')
+    txtSetUpRandom = getObjectFromGUID('f5b1f5')
+    txtRollForMe = getObjectFromGUID('26dbb2')
+    txtSubmitFinalRollOff = getObjectFromGUID('b0b8ff')
+
+    -- A list of the possible seats. tblPlayers is built from this then used afterward
+    tblPossibleColors = {'Red', 'Green', 'Blue', 'White'}
+
+    -- I could sort these by GUID, but I think code is more readable by card name
+    tblShop7Yellow = {'General', 'Granary Master', 'Grand Vizier'}
+    tblShop6Yellow = {'Embalmer', 'Estate Overseer', 'Grain Trader', 'Priest of the Dead', 'Royal Attendants'}
+    tblShop5Yellow = {'Charioteer', 'Conspirator', 'Overseer', 'Ship Captain', 'Tomb Builder'}
+    tblShop4Yellow = {'Artisan', 'Builder', 'Noble Adoption', 'Palace Servants', 'Soldier'}
+    tblShop3Yellow = {'Farmer', 'Guard', 'Indentured Worker', 'Serf', 'Worker'}
+
+    tblForcedRoll = {'Start', 'Farmer', 'Indentured Worker', 'Serf', 'Artisan',' Builder', 'Noble Adoption', 'Palace Servants', 'Conspirator', 'Ship Captain', 'Tomb Builder', 'Estate Overseer', 'Grain Trader', 'Royal Attendants', 'General', 'Granary Master', 'Grand Vizier'}
+    tblOptionRoll = {'Herder', 'Guard', 'Worker', 'Soldier', 'Charioteer', 'Overseer', 'Embalmer', 'Estate Overseer', 'Priest of the Dead', 'Queen', 'Granary Master'}
+    tblOptionRed = {'Ankh', 'Ancestral Guidance', 'Palace Key', 'Spirit of the Dead', 'Burial Mask'}
+
+    tblShop7Blue = {'Heir', 'Royal Astrologer', 'Royal Mother'}
+    tblShop6Blue = {'Astrologer', 'Priestess', 'Surveyor'}
+    tblShop5Blue = {'Head Servant', 'Master Artisan', 'Priest'}
+    tblShop4Blue = {'Entertainer', 'Grain Merchant', 'Matchmaker'}
+    tblShop3Blue = {'Beggar', 'Servant', 'Soothsayer'}
+
+    tblShop7Red = {'Queen\'s Favor', 'Royal Death', 'Royal Power'}
+    tblShop6Red = {'Pharaoh\'s Gift', 'Secret Passage', 'Treasure'}
+    tblShop5Red = {'Bad Omen', 'Burial Mask', 'Royal Decree'}
+    tblShop4Red = {'Good Omen', 'Palace Key', 'Spirit of the Dead'}
+    tblShop3Red = {'Ancestral Guidance', 'Ankh', 'Omen'}
+
+    guidHerder = 'c2a5b7'
+    guidStart = '1b3093'
+
+    tblShopYellow = {tblShop6Yellow, tblShop5Yellow, tblShop4Yellow, tblShop3Yellow} -- Row 7 is special for yellows
+    tblShopBlue = {tblShop7Blue, tblShop6Blue, tblShop5Blue, tblShop4Blue, tblShop3Blue}
+    tblShopRed = {tblShop7Red, tblShop6Red, tblShop5Red, tblShop4Red, tblShop3Red}
+
+    tblShop = {tblShopYellow, tblShopBlue, tblShopRed}
+
+    tblPlayerPosPip = {Red = {-50.00, 2.00, -15.00}, Green = {-24.00, 2.00, -15.00}, Blue = {2.00, 2.00, -15.00}, White = {28.00, 2.00, -15.00}}
+    tblPlayerPosReroll = {Red = {-47.00, 2.00, -15.00}, Green = {-21.00, 2.00, -15.00}, Blue = {5.00, 2.00, -15.00}, White = {31.00, 2.00, -15.00}}
+    tblPosOwned = {Red = {-48.80, 0.98, -19.00}, Green = {-22.70, 0.97, -19.00}, Blue = {3.50, 0.97, -19.00}, White = {29.60, 0.97, -19.00}}
+
+    -- tables are used to maintain references to cards.
+    -- four elements in tblShopToRoll for four columns of shop
+    tblShopCards = {}
+    tblRollCards = {}
+    tblShopToRoll = {0, 0, 0, 0}
+
+    -- tblIntOwned, intRollDice, intShopDice are used to place new objects nicely
+    tblIntOwned = {Red = 0, Green = 0, Blue = 0, White = 0}
+    intRollDice = 0
+    intShopDice = 0
+
+    -- Zero out game status variables. This prevents comparing with nil errors
+    tblHerderEligibility = {}
+    intOverSP = 0
+    intOverTR = 0
+    intOverQF = 0
+    intOverRP = 0
+    tblLocked = {}
+    intOnes = 0
+    intTwos = 0
+    intThrees = 0
+    intFours = 0
+    intFives = 0
+    intSixes = 0
+    intPips = 0
+
+    booFinalRollOff = false
+    intFRONumber = 7
+    intFROValue = 0
+    colFROLead = 'Nobody'
+    booFRONewLead = false
+
+    tblRollBonus = {Red = 0, Green = 0, Blue = 0, White = 0}
+    tblRollPenalty = {Red = 0, Green = 0, Blue = 0, White = 0}
+
+    -- Hide the Bad Omen and Treasure coins
+    -- I've had issues iterating over the table, so one by one
+    -- Bad Omen
+    getObjectFromGUID('99c3d6').setInvisibleTo(tblPossibleColors)
+    getObjectFromGUID('1fc16e').setInvisibleTo(tblPossibleColors)
+    getObjectFromGUID('a733e5').setInvisibleTo(tblPossibleColors)
+    getObjectFromGUID('e79b16').setInvisibleTo(tblPossibleColors)
+    -- Treasure
+    getObjectFromGUID('f39532').setInvisibleTo(tblPossibleColors)
+    getObjectFromGUID('abbe03').setInvisibleTo(tblPossibleColors)
+    getObjectFromGUID('452c14').setInvisibleTo(tblPossibleColors)
+    getObjectFromGUID('62ddfe').setInvisibleTo(tblPossibleColors)
+
+    -- Setup parameters
+    strShopBars = 'Rando'
+
+    math.randomseed(os.time()) -- set a random seed (yay time!)
+    math.random() -- so, like, you need to 'warm up' the randomizer...
+    math.random() -- Yeah. I know.
+
+    -- Scarab Token Chip
+    btnGetScarab.createButton({
+        click_function='gainScarab', function_owner=global,
+        position={0, 0.05, 0}, height=1000, width=1000, color={1,1,1,0}, tooltip='Get a Scarab Token'
+    })
+
+    -- Spend Scarab Pip Chip
+    btnLoseScarabPip.createButton({
+        click_function='loseScarab', function_owner=global,
+        position={0, 0.05, 0}, rotation={0, 0, 180}, height=1000, width=1000, color={1,1,1,0}, tooltip='Lose a Scarab Pip Token'
+    })
+
+    -- Spend Scarab Reroll Chip
+    btnLoseScarabReroll.createButton({
+        click_function='loseScarab', function_owner=global,
+        position={0, 0.05, 0}, rotation={0, 0, 180}, height=1000, width=1000, color={1,1,1,0}, tooltip='Lose a Scarab Reroll Token'
+    })
+
+    -- Default Setup Chip
+    btnSetUpRecommended.createButton({
+        click_function='setUpDefault', function_owner=global,
+        position={0, 0, 0}, height=600, width=600, color={1,1,1,0}, tooltip='Set Up Game - Recommended Shop'
+    })
+
+    -- Random Setup Chip
+    btnSetUpRandom.createButton({
+        click_function='setUpRandom', function_owner=global,
+        position={0, 0, 0}, height=600, width=600, color={1,1,1,0}, tooltip='Set Up Game - Randomized Shop'
+    })
+
+    -- Shop Override Chip
+    btnToggleShopOverride.createButton({
+        click_function='toggleShopOverride', function_owner=global,
+        position={0, 0, 0}, height=600, width=600, color={1,1,1,0}, tooltip='Toggle Shop Restrictions'
+    })
+
+    -- Delayed Prep Turn Chip
+    btnPassTurnDelayed.createButton({
+        click_function='prepTurnDelayed', function_owner=global,
+        position={0, 0, 0}, height=600, width=600, color={1,1,1,0}, tooltip='Finish Buy and Pass Turn'
+    })
+
+    -- Final Roll Off Chip
+    btnSubmitFinalRollOff.createButton({
+        click_function='submitFinalRollOff', function_owner=global,
+        position={0, 0, 0}, height=600, width=600, color={1,1,1,0}, tooltip='Submit Shop Contents to the Roll-Off'
+    })
+
+    -- Pass Buy Chip
+    btnEndTurn.createButton({
+        click_function='endTurn', function_owner=global,
+        position={0, 0, 0}, height=600, width=600, color={1,1,1,0}, tooltip='End Turn Without Buying a Card'
+    })
+
+    -- Hide the contextual buttons
+    btnEndTurn.setInvisibleTo(tblPossibleColors)
+    btnRollForMe.setInvisibleTo(tblPossibleColors)
+    btnPassTurnDelayed.setInvisibleTo(tblPossibleColors)
+    btnSubmitFinalRollOff.setInvisibleTo(tblPossibleColors)
+end
+
+-- Prepares the shop, roll, and player areas. Determines first roll.
+function setUp(params)
+    if strShopBars == 'Rando' then
+        for _=1, 5, 1 do
+            -- Iterate through letters, appending the shop bar letters and removing a letter with each go.
+            if math.random(1,2) == 1 then
+                strShopBars = string.sub(strShopBars, 2) .. 'A'
+            else
+                strShopBars = string.sub(strShopBars, 2) .. 'B'
+            end
+        end
+    end
+
+    for _, barShop in ipairs(bagBoards.getObjects()) do
+        if barShop.name == 'Tier7' .. string.sub(strShopBars, 1, 1) then
+            bar7 = bagBoards.takeObject({position = {-32.00, 1.06, 25.00}, rotation = {0, 180, 0}, guid = barShop.guid})
+            addShopBarButtons(bar7)
+            bar7.setLock(true)
+        end
+        if barShop.name == 'Tier6' .. string.sub(strShopBars, 2, 2) then
+            bar6 = bagBoards.takeObject({position = {-32.00, 1.06, 17.00}, rotation = {0, 180, 0}, guid = barShop.guid})
+            addShopBarButtons(bar6)
+            bar6.setLock(true)
+        end
+        if barShop.name == 'Tier5' .. string.sub(strShopBars, 3, 3) then
+            bar5 = bagBoards.takeObject({position = {-32.00, 1.06, 9.00}, rotation = {0, 180, 0}, guid = barShop.guid})
+            addShopBarButtons(bar5)
+            bar5.setLock(true)
+        end
+        if barShop.name == 'Tier4' .. string.sub(strShopBars, 4, 4) then
+            bar4 = bagBoards.takeObject({position = {-32.00, 1.06, 1.00}, rotation = {0, 180, 0}, guid = barShop.guid})
+            addShopBarButtons(bar4)
+            bar4.setLock(true)
+        end
+        if barShop.name == 'Tier3' .. string.sub(strShopBars, 5, 5) then
+            bar3 = bagBoards.takeObject({position = {-32.00, 1.06, -7.00}, rotation = {0, 180, 0}, guid = barShop.guid})
+            addShopBarButtons(bar3)
+            bar3.setLock(true)
+        end
+    end
+
+    if params.shopCards[1] == 'Rando' then
+        intRestrict = 0  -- used to avoid duplicates in shop
+
+        -- Row 7 yellows are special
+        params.shopCards = {'Queen'}
+        table.insert(params.shopCards, tblShop7Yellow[math.random(1, 3)])
+
+        -- Add remaining yellow cards
+        for _, tblTier in ipairs(tblShopYellow) do
+            intRestrict = math.random(1, 5)
+            table.insert(params.shopCards, tblTier[intRestrict])
+            intSecond = math.random(1, 5)
+            while intSecond == intRestrict do
+                intSecond = math.random(1, 5)
+            end
+            table.insert(params.shopCards, tblTier[intSecond])
+        end
+
+        -- Add blues
+        for i, tblTier in ipairs(tblShopBlue) do
+            a = table.insert(params.shopCards, tblTier[math.random(1, 3)])
+        end
+
+        -- Add reds
+        for _, tblTier in ipairs(tblShopRed) do
+            table.insert(params.shopCards, tblTier[math.random(1, 3)])
+        end
+    end
+
+    -- Place the cards on the board
+    for i, cardName in ipairs(params.shopCards) do
+        -- extra code to enable Treasure and Bad Omen indicator coins
+        if cardName == 'Bad Omen' then
+            getObjectFromGUID('99c3d6').setInvisibleTo({})
+            getObjectFromGUID('1fc16e').setInvisibleTo({})
+            getObjectFromGUID('a733e5').setInvisibleTo({})
+            getObjectFromGUID('e79b16').setInvisibleTo({})
+
+        elseif cardName == 'Treasure' then
+            getObjectFromGUID('f39532').setInvisibleTo({})
+            getObjectFromGUID('abbe03').setInvisibleTo({})
+            getObjectFromGUID('452c14').setInvisibleTo({})
+            getObjectFromGUID('62ddfe').setInvisibleTo({})
+        end
+
+        for _, shopCard in ipairs(stkShop.getObjects()) do
+            if shopCard.name == cardName then
+                if i < 11 then
+                    table.insert(tblShopCards, stkShop.takeObject({position = {-35.05 - 6.05 * (i % 2), 0.98, 22.40 - 8 * math.floor((i - 1) / 2)}, rotation = {0, 180, 0}, guid = shopCard.guid}))
+
+                elseif i < 16 then
+                    table.insert(tblShopCards, stkShop.takeObject({position = {-29.00, 0.97, 22.40 - ((i - 11) * 8)}, rotation = {0, 180, 0}, guid = shopCard.guid}))
+
+                else
+                    table.insert(tblShopCards, stkShop.takeObject({position = {-22.95, 0.97, 22.40 - ((i - 16) * 8)}, rotation = {0, 180, 0}, guid = shopCard.guid}))
+                end
+            end
+        end
+    end
+
+    -- Add herder, pull Start card aside
+    for _, shopCard in ipairs(stkShop.getObjects()) do
+        if shopCard.name == 'Herder' then
+            table.insert(tblShopCards, stkShop.takeObject({position = {-47.15, 0.98, -9.60}, rotation = {0, 180, 0}, guid = guidHerder}))
+            getObjectFromGUID(guidHerder).createButton({
+                click_function='buyCard', function_owner=global,
+                position={0, 0.2, 0}, height=1500, width=1060, color={1,1,1,0}, tooltip='Buy a Herder'
+            })
+
+        elseif shopCard.name == 'Start' then
+            objStart = stkShop.takeObject({position = {27.00, 0.97, 29.00}, rotation = {0, 180, 0}, guid = guidStart})
+        end
+    end
+
+    -- Wait 3 seconds, then create the roll cards. 3s is close to the limit on what it takes to render. The remainder of this function continues execution regardless.
+    Wait.time(function() shopToRoll(objStart) end, 3)
+
+    -- Also lock the shop cards
+    for _, obj in ipairs(tblShopCards) do
+        Wait.time(function() shopToRoll(obj) end, 3)
+        Wait.time(function() obj.setLock(true) end, 3.1)
+    end
+
+    -- Add shop amounts as descriptions
+    Wait.time(function() setShopRemaining(tblShopCards) end, 3)
+
+    -- Freeze the tblRollCards
+    Wait.time(function() lockRollCards() end, 4)
+
+    -- Remove setup buttons and labels
+    btnSetUpRecommended.destruct()
+    btnSetUpRandom.destruct()
+
+    txtSetUpRecommended.destruct()
+    txtSetUpRandom.destruct()
+
+    -- Reveal the Roll For Me button and add text to the empty box
+    btnRollForMe.setInvisibleTo({})
+    txtRollForMe.setValue('Roll For Me')
+
+    -- Prepare Roll for Me Chip
+    btnRollForMe.createButton({
+        click_function='rollRemaining', function_owner=global,
+        position={0, 0, 0}, height=600, width=600, color={1,1,1,0}, tooltip='Roll Any Remaining Dice'
+    })
+
+    -- Reveal the end turn chip
+    btnEndTurn.setInvisibleTo({})
+
+    -- Add Start cards, create player list, select the first players
+    tblPlayers = {}
+    tblFinalRollOff = {}
+    for _, col in ipairs(tblPossibleColors) do
+        if Player[col].seated then
+            table.insert(tblPlayers, col)
+            buyCard(objStart, col)
+        end
+    end
+
+    colCurrentPlayer = tblPlayers[math.random(1, #tblPlayers)]
+    colNextPlayerOffset = 'Nobody'
+
+    for i, _ in ipairs(tblPlayers) do
+        intSetUpScarabs = 0
+        while intSetUpScarabs < i do
+            gainScarab(empty, getNextPlayer())
+            intSetUpScarabs = intSetUpScarabs + 1
+        end
+
+        colCurrentPlayer = getNextPlayer()
+
+        -- Break before last loop, which would give starting player scarabs
+        if i + 1 == #tblPlayers then
+            -- still need to set the original player as the first to play
+            colCurrentPlayer = getNextPlayer()
+            break
+        end
+    end
+
+    Wait.time(function() prepTurn(colCurrentPlayer) end, 5)
+end
+
+-- Pull add the four buttons to a shop bar to buy the cards beneath
+function addShopBarButtons(objBar)
+    -- The function names are set at the end of this script
+    objBar.createButton({
+        click_function='wrapBuy' .. objBar.getName() .. '1', function_owner=global,
+        position={-6, 0.2, 0}, height=400, width=1700, color={1,1,1,0}, tooltip='Buy The Card Below'
+    })
+    objBar.createButton({
+        click_function='wrapBuy' .. objBar.getName() .. '2', function_owner=global,
+        position={-2, 0.2, 0}, height=400, width=1700, color={1,1,1,0}, tooltip='Buy The Card Below'
+    })
+    objBar.createButton({
+        click_function='wrapBuy' .. objBar.getName() .. '3', function_owner=global,
+        position={2, 0.2, 0}, height=400, width=1700, color={1,1,1,0}, tooltip='Buy The Card Below'
+    })
+    objBar.createButton({
+        click_function='wrapBuy' .. objBar.getName() .. '4', function_owner=global,
+        position={6, 0.2, 0}, height=400, width=1700, color={1,1,1,0}, tooltip='Buy The Card Below'
+    })
+end
+
+-- Duplicate a card from the shop table into the roll space
+function shopToRoll(obj)
+    -- Though we place the cards at -41.10, it's not exact. So test location with a tolerance
+    if math.abs(obj.getPosition()[1] + 41.10) <= 0.01 then
+        table.insert(tblRollCards, obj.clone({position = {22 - (6 * tblShopToRoll[1]), 0.97, 19}, rotation = {0, 180, 180}}))
+        tblShopToRoll[1] = tblShopToRoll[1] + 1
+
+    elseif math.abs(obj.getPosition()[1] + 35.05) <= 0.01 then
+        table.insert(tblRollCards, obj.clone({position = {22 - (6 * tblShopToRoll[2]), 0.97, 15}, rotation = {0, 180, 180}}))
+        tblShopToRoll[2] = tblShopToRoll[2] + 1
+
+    elseif math.abs(obj.getPosition()[1] + 29.00) <= 0.01 then
+        table.insert(tblRollCards, obj.clone({position = {30, 0.97, 8 - (4 * tblShopToRoll[3])}, rotation = {0, 180, 180}}))
+        tblShopToRoll[3] = tblShopToRoll[3] + 1
+
+    elseif math.abs(obj.getPosition()[1] + 22.95) <= 0.01 then
+        table.insert(tblRollCards, obj.clone({position = {36, 0.97, 8 - (4 * tblShopToRoll[4])}, rotation = {0, 180, 180}}))
+        tblShopToRoll[4] = tblShopToRoll[4] + 1
+
+    elseif obj.getName() == 'Start' then
+        table.insert(tblRollCards, obj.clone({position = {-2.00, 0.97, 23.00}, rotation = {0, 180, 180}}))
+
+    elseif obj.getName() == 'Herder' then
+        table.insert(tblRollCards, obj.clone({position = {4.00, 0.97, 23.00}, rotation = {0, 180, 180}}))
+    end
+
+    objNewCard = tblRollCards[#tblRollCards]
+
+    -- Yellow cards are furthest left. We can add buttons to the optional ones.
+    if objNewCard.getPosition()[1] < 22.01 then
+        for _, actCard in ipairs(tblOptionRoll) do
+            if objNewCard.getName() == actCard then
+                objNewCard.createButton({
+                    click_function='activateRollCard', function_owner=global,
+                    position={0, 0.2, 0}, height=1500, width=1060, color={1,1,1,0}, tooltip='Activate ' .. objNewCard.getName()
+                })
+                break
+            end
+        end
+    -- Blue cards are in the middle, at x=30
+    elseif  math.abs(objNewCard.getPosition()[1] - 30) <= 0.01 then
+        objNewCard.createButton({
+            click_function='flipBlue', function_owner=global,
+            position={0, 0.2, 0}, height=1500, width=1060, color={1,1,1,0}, tooltip='Activate ' .. objNewCard.getName()
+        })
+    -- Red cards are furthest to the right, at x=36
+    elseif math.abs(objNewCard.getPosition()[1] - 36) <= 0.01 then
+        for _, actCard in ipairs(tblOptionRed) do
+            if objNewCard.getName() == actCard then
+                objNewCard.createButton({
+                    click_function='activateRollCard', function_owner=global,
+                    position={0, 0.2, 0}, height=1500, width=1060, color={1,1,1,0}, tooltip='Activate ' .. objNewCard.getName()
+                })
+                break
+            end
+        end
+    end
+end
+
+-- Add the "X Remaining" descriptions to the shop cards
+function setShopRemaining(tblShopCards)
+    for i, shopCard in ipairs(tblShopCards) do
+        -- See note on shopToRoll. Positions aren't exact, so we do an absolute tolerance.
+        if math.abs(shopCard.getPosition()[3] - 22.40) <= 0.01 then
+            shopCard.setDescription("1 Remaining")
+
+        elseif math.abs(shopCard.getPosition()[3] - 14.40) <= 0.01 then
+            shopCard.setDescription(math.max(1, #tblPlayers - 2) .. ' Remaining')
+
+        elseif math.abs(shopCard.getPosition()[3] - 6.40) <= 0.01 then
+            shopCard.setDescription(math.max(1, #tblPlayers - 2) .. ' Remaining')
+
+        elseif math.abs(shopCard.getPosition()[3] + 1.60) <= 0.01 then
+            shopCard.setDescription(math.max(1, #tblPlayers - 1) .. ' Remaining')
+
+        elseif math.abs(shopCard.getPosition()[3] + 9.60) <= 0.01 then
+            shopCard.setDescription(#tblPlayers .. " Remaining")
+        end
+    end
+end
+
+-- Lock the roll Cards. Placed in a separate function to ensure the table fully builds.
+function lockRollCards()
+    for _, objRollCard in ipairs(tblRollCards) do
+        objRollCard.setLock(true)
+    end
+end
+
+-- Finds the next player
+function getNextPlayer()
+    for i, col in ipairs(tblPlayers) do
+        if col == colCurrentPlayer then
+            if i + 1 > #tblPlayers then
+                return tblPlayers[1]
+            else
+                return tblPlayers[i + 1]
+            end
+        end
+    end
+end
+
+-- Set up the entire game, using random values to determine the shop. Wraps setUp()
+function setUpRandom()
+    params = {}
+    params.default = false
+    params.shopCards = {'Rando'}
+    setUp(params)
+end
+
+-- Set up the entire game using the recommended shop. Wraps setUp()
+function setUpDefault()
+    params = {}
+    params.default = true
+    strShopBars = 'AAAAA'
+    -- shopCards listed as yellows (tiers 7-3), blues (tiers 7-3), reds (tiers 7-3)
+    params.shopCards = {'Queen', 'General', 'Embalmer', 'Royal Attendants', 'Charioteer', 'Conspirator', 'Artisan', 'Builder', 'Worker', 'Farmer', 'Heir', 'Surveyor', 'Master Artisan', 'Entertainer', 'Servant', 'Queen\'s Favor', 'Treasure', 'Burial Mask', 'Palace Key', 'Omen'}
+
+    setUp(params)
+end
+
+-- Here as a failsafe function - allows for buying any card from the shop
+function toggleShopOverride()
+    if booShopOverride then
+        booShopOverride = false
+    else
+        booShopOverride = true
+    end
+end
+
+-- Clear the roll and shop zones, add any required dice for given color
+function prepTurn(color)
+    -- Reset placement counters for shop, roll zones, roll count
+    intShopDice = 0
+    intRollDice = 0
+    intRolls = 0
+
+    -- Hide the Delayed Turn Button. Resolves an issue with Secret Passage -> Omen.
+    -- If SP bought Omen, Omen triggers prepTurn without hiding this button.
+    btnPassTurnDelayed.setInvisibleTo(tblPossibleColors)
+
+    -- Add a negative one. Won't trigger herder match, but allows for first roll
+    tblHerderEligibility = {-1}
+    booHerderEligibility = false
+    colCurrentPlayer = color
+
+    -- Delete any dice from the shop zone
+    for _, obj in ipairs(zonShop.getObjects()) do
+        obj.destruct()
+    end
+
+    -- Delete any dice from the roll zone
+    for _, obj in ipairs(zonRoll.getObjects()) do
+        obj.destruct()
+    end
+
+    broadcastToAll(colCurrentPlayer .. ' to play!', colCurrentPlayer)
+
+    if tblRollBonus[color] > 0 then
+        addRollDice(true, 1, tblRollBonus[color])
+        tblRollBonus[color] = 0
+    end
+
+    if tblRollPenalty[color] > 0 then
+        if booFinalRollOff then
+            broadcastToColor('It is the final roll-off! No penalty!', color, {1, 1, 1})
+        else
+            broadcastToColor('You have a penalty of ' .. tblRollPenalty[color] .. ' dice! The first dice you lock will be deleted!', color, {1, 1, 1})
+        end
+    end
+
+    -- Deactivate all tiles in the roll area
+    for _, rollCard in ipairs(tblRollCards) do
+        rollCard.setRotation({0, 180, 180})
+    end
+
+    -- For each tile in players shop, activate the tile in the roll area
+    for _, ownCard in ipairs(tblZonOwned[color].getObjects()) do
+        strName = ownCard.getName()
+
+        if strName == 'Herder' then
+            booHerderEligibility = true
+        else
+            for __, rollCard in ipairs(tblRollCards) do
+                if strName == rollCard.getName() then
+                    rollCard.setRotation(ownCard.getRotation())
+
+                    -- List of forced rolls, MUST add these dice
+                    if strName == 'Start' then
+                        addRollDice(true, 1, 3)
+
+                    elseif strName == 'Farmer' then
+                        addRollDice(true, 1, 1)
+
+                    elseif strName == 'Indentured Worker' then
+                        addRollDice(true, 2, 1)
+
+                    elseif strName == 'Serf' then
+                        addRollDice(true, 3, 1)
+
+                    elseif strName == 'Artisan' then
+                        addRollDice(true, 4, 1)
+
+                    elseif strName == 'Builder' then
+                        gainScarab(object, color)
+                        addRollDice(true, 2, 1)
+
+                    elseif strName == 'Noble Adoption' then
+                        addRollDice(true, 5, 1)
+
+                    elseif strName == 'Palace Servants' then
+                        addRollDice(true, 2, 2)
+
+                    elseif strName == 'Conspirator' then
+                        addRollDice(true, 6, 1)
+
+                    elseif strName == 'Ship Captain' then
+                        addRollDice(true, 7, 1)
+
+                    elseif strName == 'Tomb Builder' then
+                        gainScarab(object, color)
+                        addRollDice(true, 1, 1)
+
+                    -- In addition to scarab, reset description
+                    elseif strName == 'Estate Overseer' then
+                        gainScarab(object, color)
+                        rollCard.setDescription('0')
+
+                    elseif strName == 'Grain Trader' then
+                        gainScarab(object, color)
+                        gainScarab(object, color)
+                        addRollDice(true, 1, 1)
+
+                    elseif strName == 'Royal Attendants' then
+                        addRollDice(true, 1, 1)
+                        addRollDice(true, 2, 1)
+
+                    elseif strName == 'General' then
+                        addRollDice(true, 1, 2)
+
+                    -- In addition to forced roll, reset description
+                    elseif strName == 'Granary Master' then
+                        addRollDice(true, 1, 1)
+                        rollCard.setDescription('0')
+
+                    elseif strName == 'Grand Vizier' then
+                        addRollDice(true, 8, 1)
+
+                    elseif strName == 'Beggar' then
+                        gainScarab(object, color)
+                    end
+                end
+            end
+        end
+    end
+end
+
+-- Add dice to the roll zone, should be triggered by prepTurn function on each card that adds dice.
+function addRollDice(booForced, type, amount, value)
+    intLimit = intRollDice + amount
+
+    while intRollDice < intLimit do
+        intRollDice = intRollDice + 1
+
+        tblPosRoll = zonRoll.getPosition()
+        tblPosRoll[1] = tblPosRoll[1] - 4 + (3 * ((intRollDice - 1) % 5))
+        tblPosRoll[2] = 4
+        tblPosRoll[3] = tblPosRoll[3] - 4 + (3 * math.floor(((intRollDice - 1) / 5)))
+
+        -- Set the rotation. Default is two because it involves the fewest changes for other faces.
+        -- if no value, set the flag on the die that it cannot be used to shop
+        tblRotRoll = {0, 0, 0}
+        if value == 1 then
+            tblRotRoll[1] = 270
+
+        elseif value == 3 then
+            tblRotRoll[3] = 270
+
+        elseif value == 4 then
+            tblRotRoll[3] = 90
+
+        elseif value == 5 then
+            tblRotRoll[3] = 180
+
+        elseif value == 6 then
+            tblRotRoll[1] = 90
+        end
+
+        newDie = tblDice[type].takeObject({position = tblPosRoll, rotation = tblRotRoll})
+
+        if booForced then
+            newDie.addTag('MustRoll')
+        end
+    end
+end
+
+-- object is parent object, color is who clicked, altClick is if they didn't left-click
+function activateRollCard(object, color, altClick)
+    -- Burial Mask can be activated at any time.
+    if object.getName() == 'Burial Mask' then
+        gainScarab(object, color)
+        gainScarab(object, color)
+        gainScarab(object, color)
+        gainScarab(object, color)
+        gainScarab(object, color)
+        flipOwnedRed(object, color)
+
+    -- These cards only get brought in AFTER the first roll.
+    elseif intRolls > 0 then
+        -- Start, Tier 3 Yellow
+        if object.getName() == 'Herder' then
+            addRollDice(true, 1, 1)
+        elseif object.getName() == 'Guard' then
+            addRollDice(false, 1, 1, 2)
+        elseif object.getName() == 'Worker' then
+            addRollDice(false, 1, 1, 1)
+
+        -- Tier 4 Yellow
+        elseif object.getName() == 'Soldier' then
+            addRollDice(false, 1, 1, 3)
+
+        -- Tier 5 Yellow
+        elseif object.getName() == 'Charioteer' then
+            addRollDice(false, 1, 1, 5)
+        elseif object.getName() == 'Overseer' then
+            addRollDice(false, 1, 1, 4)
+
+        -- Tier 6 yellow
+        elseif object.getName() == 'Embalmer' then
+            addRollDice(false, 1, 1, 6)
+        elseif object.getName() == 'Estate Overseer' then
+            addRollDice(false, 1, 1, math.min(intRolls, 6))
+        elseif object.getName() == 'Priest of the Dead' then
+            addRollDice(false, 1, 1)
+
+        -- Tier 7 Yellow
+        elseif object.getName() == 'Queen' then
+            -- Queen needs a value so it can be shopped immediately
+            addRollDice(false, 1, 1)
+        elseif object.getName() == 'Granary Master' then
+            gainScarab(object, color)
+            addRollDice(false, 1, 1, math.min(intRolls, 6))
+
+        -- Blue Cards
+        elseif object.getName() == 'Grain Merchant' then
+            gainScarab(object, color)
+
+        -- Red Cards
+        elseif object.getName() == 'Ankh' then
+            intMax = countScarabs(color)
+            i = 0
+            while i < intMax do
+                gainScarab(object, color)
+                i = i + 1
+            end
+            flipOwnedRed(object, color)
+
+        elseif object.getName() == 'Ancestral Guidance' then
+            gainScarab(object, color)
+            gainScarab(object, color)
+            addRollDice(true, 1, 1)
+            flipOwnedRed(object, color)
+
+        end
+
+        -- Flips the card over. One, shows that it was executed. Two, prevents clicking the button! Woo!
+        object.setRotation({0, 180, 180})
+
+    elseif object.getName() == 'Palace Key' then
+        addRollDice(true, 1, 2)
+        flipOwnedRed(object, color)
+        object.setRotation({0, 180, 180})
+
+    else
+        broadcastToColor('You must roll at least once before bringing in optional dice.', color, {1, 1, 1})
+    end
+
+    if object.getName() == 'Spirit of the Dead' then
+        if #zonRoll.getObjects() == 0 then
+            addRollDice(false, 1, 1)
+            flipOwnedRed(object, color)
+            object.setRotation({0, 180, 180})
+
+        else
+            broadcastToColor('You still have dice to roll!', color, {1, 1, 1})
+        end
+    end
+end
+
+function flipBlue(object, color)
+    object.setRotation({0, 180, 180})
+end
+
+-- called after activating a red card - finds the owned red card and flips it
+function flipOwnedRed(object, color)
+    for _, ownCard in ipairs(tblZonOwned[color].getObjects()) do
+        if ownCard.getName() == object.getName() then
+            ownCard.setRotation({0, 180, 180})
+            break
+        end
+    end
+end
+
+-- The function is called whenever ANY object enters a zone with the same tags.
+-- Currently, only the zonShop uses this to lock dice entering the zone.
+function onObjectEnterZone(zone, object)
+    if object.hasTag('MustRoll') and zone == zonShop then
+        broadcastToColor('You must roll this die before using it!', colCurrentPlayer, {1, 1, 1})
+
+    elseif zone == zonShop then
+        if tblRollPenalty[colCurrentPlayer] > 0 then
+            object.destruct()
+            tblRollPenalty[colCurrentPlayer] = tblRollPenalty[colCurrentPlayer] - 1
+
+            if tblRollPenalty[colCurrentPlayer] > 0 then
+                broadcastToColor('The penalty remains! ' .. tblRollPenalty[colCurrentPlayer] .. ' more dice.', colCurrentPlayer, {1, 1, 1})
+            else
+                broadcastToColor('The penalty is lifted!', colCurrentPlayer, {1, 1, 1})
+            end
+        end
+
+        -- drop the die out of the player's grip
+        object.drop()
+        object.unregisterCollisions()
+
+        -- remove any velocity so the die stays still
+        object.setVelocity({0, 0, 0})
+        object.setAngularVelocity({0, 0, 0})
+
+        -- prep the counter to arrange dice nicely
+        intShopDice = intShopDice + 1
+
+        -- place the die in the tray and lock it
+        object.setPosition({-15.00 + 2 * ((intShopDice - 1) % 4), 1.75, -9.00 + 2 * (math.floor((intShopDice - 1) / 4))})
+
+        -- to unify rotation, get and set the die value. This rotates the die
+        -- to be square and keep it's value
+        object.setValue(object.getValue())
+
+        object.setLock(true)
+
+        -- Voyage dice will add more standard dice to the roll pool
+        if object.getName() == 'Voyage' and object.getValue() == 6 then
+            addRollDice(true, 1, 2)
+        end
+
+        -- Decree dice will allow you to take a tile when locked
+        if object.getName() == 'Decree' and object.getValue() == 1 then
+            broadcastToAll('You can take any tile you do not own from another player!', {1,1,1})
+        end
+
+        -- If the turn owner has an unused herder, check for flip
+        if booHerderEligibility then
+            for _, pip in ipairs(tblHerderEligibility) do
+                if getPipCount(object) == pip then
+                    activateRollHerder(colCurrentPlayer)
+                    break
+                end
+            end
+        end
+
+        -- No matter what, add die value to the table to allow for rollRemaining function
+        table.insert(tblHerderEligibility, getPipCount(object))
+
+        tblLocked = {}
+        intOnes = 0
+        intTwos = 0
+        intThrees = 0
+        intFours = 0
+        intFives = 0
+        intSixes = 0
+        intPips = 0
+
+        -- Convert the dice values to number of pips.
+        for _, obj in ipairs(zonShop.getObjects()) do
+            table.insert(tblLocked, getPipCount(obj))
+        end
+
+        -- Convert the number of pips into reporting
+        for _, val in ipairs(tblLocked) do
+            if val == 1 then
+                intOnes = intOnes + 1
+                intPips = intPips + 1
+            elseif val == 2 then
+                intTwos = intTwos + 1
+                intPips = intPips + 2
+            elseif val == 3 then
+                intThrees = intThrees + 1
+                intPips = intPips + 3
+            elseif val == 4 then
+                intFours = intFours + 1
+                intPips = intPips + 4
+            elseif val == 5 then
+                intFives = intFives + 1
+                intPips = intPips + 5
+            elseif val == 6 then
+                intSixes = intSixes + 1
+                intPips = intPips + 6
+            end
+        end
+
+        txtShop.setValue('SHOP CONTENTS:\n1\'s:  ' .. intOnes .. '\n2\'s:  ' .. intTwos .. '\n3\'s:  ' .. intThrees ..'\n4\'s:  ' .. intFours ..'\n5\'s:  ' .. intFives ..'\n6\'s:  ' .. intSixes .. '\nPips:  ' .. intPips)
+    end
+end
+
+-- Return the pip value for a die. Will adjust for custom die faces.
+function getPipCount(die)
+    strName = die.getName()
+    intVal = die.getValue()
+
+    if strName == 'Voyage' then
+        return 0
+    elseif strName == 'Decree' and intVal == 1 then
+        return 0
+    elseif strName == 'Intrigue' and intVal == 6 then
+        return 0
+    elseif strName == 'Noble' and intVal < 3 then
+        return intVal + 4
+    elseif strName == 'Serf' and intVal > 4 then
+        return intVal - 4
+    else
+        return intVal
+    end
+end
+
+-- Find the herder card and flip it over. Disable herder eligibility for remainder of turn.
+function activateRollHerder(color)
+    for _, card in ipairs(tblRollCards) do
+        if card.getName() == 'Herder' then
+            card.setRotation({0, 180, 0})
+        end
+    end
+
+    booHerderEligibility = false
+end
+
+-- Gives a random scarab token to the color who clicked it
+-- object is parent object, color is who clicked, altClick is if they didn't left-click
+function gainScarab(object, color, altClick)
+    math.random()
+
+    -- So long as there are fewer than ~25 tokens, no issue with spawning in stack
+    if math.random(1, 2) == 1 then
+        objScarabPip.takeObject({position = tblPlayerPosPip[color], rotation = {0, 180, 180}})
+    else
+        objScarabReroll.takeObject({position = tblPlayerPosReroll[color], rotation = {0, 180, 180}})
+    end
+end
+
+-- Takes the corresponding scarab token from a player. Intended for tracking.
+-- object is parent object, color is who clicked, altClick is if they didn't left-click
+function loseScarab(object, color, altClick)
+    booMessage = true
+
+    -- pip code
+    if object.getGUID() == btnLoseScarabPip.getGUID() then
+        for _, obj in ipairs(tblZonScarabPip[color].getObjects()) do
+            booMessage = false
+
+            -- chips and chipstacks act different. The getQuantity output determines the difference.
+            if obj.getQuantity() == -1 then
+                obj.destruct()
+            else
+                obj.takeObject().destruct()
+            end
+
+            break
+        end
+
+    -- reroll code
+    elseif object.getGUID() == btnLoseScarabReroll.getGUID() then
+        for _, obj in ipairs(tblZonScarabReroll[color].getObjects()) do
+            booMessage = false
+            if obj.getQuantity() == -1 then
+                obj.destruct()
+            else
+                obj.takeObject().destruct()
+            end
+
+            break
+        end
+    end
+
+    if booMessage then
+        broadcastToColor('You don\'t have that scarab token!', color, {1, 1, 1})
+    end
+end
+
+-- Lock any Immediate dice, then roll the remainder
+function rollRemaining(object, color, altClick)
+    -- the intImmediates are used to avoid dice attempting to occupy the same space for a frame
+    intImmediates = 0
+
+    if #zonRoll.getObjects() == 0 then
+        broadcastToColor('You don\'t have any more dice!', color, {1, 1, 1})
+    else
+        for _, die in ipairs(zonRoll.getObjects()) do
+            if die.getName() == 'Immediate' then
+                -- Check to see if the die has been rolled yet. If so, shop it.
+                -- If not, remove the tag and roll it.
+                if not die.hasTag('MustRoll') then
+                    -- Delay the addition of new dice for a frame. If they all pop in at
+                    -- the same time, things get wonky. They work with registering values,
+                    -- but the dice are rotated incorrecly.
+                    Wait.frames(function() die.setPosition({-15, 2.7, 9}) end, intImmediates)
+                    intImmediates = intImmediates + 2
+
+                    -- The script takes time to see that a die was placed in the shop zone
+                    -- Since hitting the roll button indicates they don't care about herder,
+                    -- Just set a dummy value in the table
+                    table.insert(tblHerderEligibility, 0)
+                end
+            end
+
+            die.removeTag('MustRoll')
+        end
+
+        Wait.frames(function()
+            if #tblHerderEligibility > 0 then
+                for _, die in ipairs(zonRoll.getObjects()) do
+                    die.roll()
+                    Wait.time(function() die.roll() end, 0.5)
+                    Wait.time(function() die.roll() end, 1)
+                    Wait.time(function() die.roll() end, 1.5)
+                    Wait.time(function() die.roll() end, 2)
+                    Wait.time(function() die.roll() end, 2.5)
+                    Wait.time(function() die.roll() end, 3)
+                end
+            else
+                broadcastToColor('You must lock a die before rolling again.', color, {1, 1, 1})
+            end
+        end, intImmediates)
+
+        -- Delay clearing the table. Otherwise, previous dice roll will be queued,
+        -- table will be cleared before execution, and dice will not roll.
+        Wait.frames(function() tblHerderEligibility = {} end, intImmediates)
+
+        -- Success? Add one to the roll counter
+        intRolls = intRolls + 1
+        for _, rollCard in ipairs(tblRollCards) do
+            if rollCard.getName() == 'Estate Overseer' then
+                rollCard.setDescription(intRolls)
+            elseif rollCard.getName() == 'Granary Master' then
+                rollCard.setDescription(intRolls)
+            end
+        end
+    end
+end
+
+-- Buying a card moves the card to that players zonOwned and places it in order.
+function buyCard(obj, color, booOverride)
+    booOwned = false
+    for _, card in ipairs(tblZonOwned[color].getObjects()) do
+        if card.getName() == obj.getName() then
+            broadcastToColor('You already own that card!', color, {1, 1, 1})
+            booOwned = true
+            break
+        end
+    end
+
+    if intOverTR > 0 then
+        if math.abs(obj.getPosition()[1] + 22.95) <= 0.01 then
+            booOwned = true -- appropriate booOwned - treasure can't buy Reds
+        else
+            intOverTR = intOverTR - 1
+        end
+    end
+
+    if not booOwned then
+        tblIntOwned[color] = tblIntOwned[color] + 1
+
+        -- I'd love to use a table to store position, but it looked like it was passing references
+        -- In other words, changing that table would lead to changing tblPosOwned, which I need to be static
+        intPosX = tblPosOwned[color][1]
+        intPosZ = tblPosOwned[color][3]
+        intPosX = intPosX + (4.8 * ((tblIntOwned[color] - 1) % 5))
+        intPosZ = intPosZ - 3.2 * (math.floor((tblIntOwned[color] - 1) / 5))
+
+        objOwned = obj.clone({position = {intPosX, 0.97, intPosZ}, rotation = {0, 180, 0}, scale = {1, 1, 1}})
+        objOwned.setLock(false)
+
+        -- Althought most options can be set in clone, tags have to be a separate line
+        objOwned.setTags({'Cards'})
+        objOwned.setDescription('')
+
+        if obj.getName() ~= 'Start' then
+            intRemain = string.sub(obj.getDescription(), 1, 1) - 1
+
+            obj.setDescription(intRemain .. ' Remaining')
+
+            if intRemain == 0 then
+                obj.setRotation({0, 180, 180})
+            end
+
+            -- Blue cards give 1 scarab, red cards give 2 scarabs
+            if math.abs(obj.getPosition()[1] + 29.00) <= 0.01 then
+                gainScarab(obj, color)
+            elseif math.abs(obj.getPosition()[1] + 22.95) <= 0.01 then
+                gainScarab(obj, color)
+                gainScarab(obj, color)
+            end
+
+            -- If using the bad omen, use before testing potential buy complications
+            if testUseBadOmen(color) then
+                -- Flip the coin, lock it, and prevent it from being used again
+                tblCoinBadOmen[color].setValue(2)
+                tblCoinBadOmen[color].setLock(true)
+                tblCoinBadOmen[color].setInvisibleTo(tblPossibleColors)
+
+                -- Flip the corresponding owned card
+                for _, card in ipairs(tblZonOwned[color].getObjects()) do
+                    if card.getName() == 'Bad Omen' then
+                        card.setRotation({0, 180, 180})
+                        break
+                    end
+                end
+
+                for _, col in ipairs(tblPlayers) do
+                    if col == color then
+                        tblRollBonus[color] = tblRollBonus[color] + 1
+                    else
+                        tblRollPenalty[color] = tblRollPenalty[color] + 2
+                    end
+                end
+            end
+
+            -- Different effects for specific Cards
+            --Indentured Worker gives a scarab
+            if obj.getName() == 'Indentured Worker' then
+                gainScarab(obj, color)
+
+            -- Queen initiates final roll-off
+            elseif obj.getName() == 'Queen' then
+                booFinalRollOff = true
+                prepFinalRollOff()
+                broadcastToAll('The final roll-off has begun!', {1, 1, 1})
+                broadcastFinalRollOff()
+
+                for _, col in ipairs(tblPlayers) do
+                    if col == colCurrentPlayer then
+                        booRD = true
+                    end
+                    if booRD then
+                        tblRollBonus[col] = tblRollBonus[col] + 1
+                        broadcastToColor('Because you haven\'t gone yet, you have +1 dice for the final roll-off.', col, {1, 1, 1})
+                    end
+                end
+            end
+
+            --Omen, Good Omen, and Queen's Favor give buyer another turn
+            if obj.getName() == 'Omen' then
+                objOwned.setRotation({0, 180, 180})
+                tblRollPenalty[color] = tblRollPenalty[color] + 1
+                prepTurn(colCurrentPlayer)
+
+            elseif obj.getName() == 'Good Omen' then
+                objOwned.setRotation({0, 180, 180})
+                prepTurn(colCurrentPlayer)
+
+            elseif obj.getName() == 'Secret Passage' then
+                objOwned.setRotation({0, 180, 180})
+                intOverSP = 2
+
+                colCurrentPlayer = getNextPlayer()
+                prepDelayedTurnButton(colCurrentPlayer)
+                broadcastToColor('Buy two free Tier 3 tiles. If buying Omen, buy it last!', color, {1, 1, 1})
+
+            elseif obj.getName() == 'Queen\'s Favor' then
+                objOwned.setRotation({0, 180, 180})
+                intOverQF = 1
+
+                prepDelayedTurnButton(color)
+                broadcastToColor('Buy a free Blue or Yellow Tier 6 or below.', color, {1, 1, 1})
+
+            elseif obj.getName() == 'Royal Death' then
+                objOwned.setRotation({0, 180, 180})
+                booRD = false
+                for _, col in ipairs(tblPlayers) do
+                    if col == colCurrentPlayer then
+                        booRD = true
+                    end
+                    if booRD then
+                        tblRollBonus[col] = tblRollBonus[col] + 1
+                        broadcastToColor('Because you haven\'t gone yet, you have +1 dice for the final roll-off.', col, {1, 1, 1})
+                    end
+                end
+                booFinalRollOff = true
+                prepFinalRollOff()
+                broadcastToAll('The final roll-off has begun!', {1, 1, 1})
+                Wait.time(function() prepTurn(colCurrentPlayer) end, 1)
+
+            elseif obj.getName() == 'Royal Power' then
+                objOwned.setRotation({0, 180, 180})
+                intOverRP = 2
+
+                colCurrentPlayer = getNextPlayer()
+                prepDelayedTurnButton(colCurrentPlayer)
+                broadcastToColor('Buy two free Blues Tier 6 or below.', color, {1, 1, 1})
+
+            -- booOverride is used when buying multiple - it avoids prepTurn calls
+            elseif booOverride then
+                do end
+
+            -- The second purchase of Treasure needs the shop cleared
+            elseif intOverTR > 0 then
+                intShopDice = 0
+                intRollDice = 0
+                intRolls = 0
+
+                for _, obj in ipairs(zonShop.getObjects()) do
+                    obj.destruct()
+                end
+
+            elseif testUseTreasure(color) then
+                -- Reset placement counters for shop, roll zones, roll count
+                tblCoinTreasure[color].setValue(2)
+                tblCoinTreasure[color].setLock(true)
+                tblCoinTreasure[color].setInvisibleTo(tblPossibleColors)
+
+                -- Flip the corresponding owned card
+                for _, card in ipairs(tblZonOwned[color].getObjects()) do
+                    if card.getName() == 'Treasure' then
+                        card.setRotation({0, 180, 180})
+                        break
+                    end
+                end
+
+                intOverTR = 2
+                intShopDice = 0
+                intRollDice = 0
+                intRolls = 0
+
+                -- Delete any dice from the roll zone
+                for _, obj in ipairs(zonRoll.getObjects()) do
+                    obj.destruct()
+                end
+
+                for _, obj in ipairs(zonShop.getObjects()) do
+                    obj.translate({20, 0, 0})
+                end
+
+                broadcastToColor('Two yellow or blue buys with your current dice!', color, {1, 1, 1})
+                prepDelayedTurnButton(colCurrentPlayer)
+
+            else
+                colCurrentPlayer = getNextPlayer()
+                Wait.time(function() prepTurn(colCurrentPlayer) end, 1)
+            end
+        end
+    end
+end
+
+-- End the turn without buying a card. Need an escape if user gets a bad roll.
+function endTurn(object, color, altClick)
+    gainScarab(object, color, altClick)
+    gainScarab(object, color, altClick)
+
+    colCurrentPlayer = getNextPlayer()
+    Wait.time(function() prepTurn(colCurrentPlayer) end, 1)
+end
+
+-- Lock the shop, add the final roll off submit button.
+function prepFinalRollOff()
+    -- Lock the shop. We don't need any more cards.
+    for _, card in ipairs(tblShopCards) do
+        card.setRotation({0, 180, 180})
+    end
+
+    -- set the button to submit a roll as visible
+    btnSubmitFinalRollOff.setInvisibleTo({})
+    txtSubmitFinalRollOff.setValue('Submit Roll')
+end
+
+-- Broadcast the current owner of the pharaoh to everyone
+function broadcastFinalRollOff()
+    -- -- Initial values, copied from onLoad
+    -- intFRONumber = 7
+    -- intFROValue = 0
+    -- colFROLead = 'Nobody'
+    -- booFRONewLead = false
+
+    -- Run through the locked dice in the shop
+    for i, num in ipairs(tblLocked) do
+        if num > intFRONumber then
+            intFRONumber = num
+            intFROValue = i
+            colFROLead = colCurrentPlayer
+            booFRONewLead = true
+        elseif (num == intFRONumber) and (i > intFROValue) then
+            intFRONumber = num
+            intFROValue = i
+            colFROLead = colCurrentPlayer
+            booFRONewLead = true
+        end
+    end
+
+    if booFRONewLead then
+        broadcastToAll(colFROLead .. ' leads the table for the pharaoh\'s favor with ' .. intFRONumber .. ' ' .. intFROValue .. '\'s!', {1, 1, 1})
+    elseif colFROLead == 'Nobody' then
+        broadcastToAll('Nobody commands the pharaoh\'s favor!', {1, 1, 1})
+    else
+        broadcastToAll(colFROLead .. ' maintains control of the pharaoh\'s favor with ' .. intFRONumber .. ' ' .. intFROValue .. '\'s!', {1, 1, 1})
+    end
+end
+
+function submitFinalRollOff(object, color, altClick)
+    broadcastFinalRollOff()
+    booPharaohsGift = false
+
+    for _, card in ipairs(tblZonOwned[colCurrentPlayer].getObjects()) do
+        if card.getName() == 'Pharaoh\'s Gift' then
+            if card.getRotation() ~= {0, 180, 180} then
+                broadcastToAll(colCurrentPlayer .. ' has a gift from the pharaoh! Submit a new roll!', {1, 1, 1})
+                booPharaohsGift = true
+                card.setRotation({0, 180, 180})
+                break
+
+            end
+        end
+    end
+
+    if booPharaohsGift == true then
+        Wait.time(function() prepTurn(colCurrentPlayer) end, 1)
+    else
+        -- tblFinalRollOff indicates who has rolled.
+        table.insert(tblFinalRollOff, colCurrentPlayer)
+
+        if #tblFinalRollOff == #tblPlayers then
+            if colFROLead == 'Nobody' then
+                broadcastToAll('Nobody can capture the pharaoh\'s attention! Gather more influence!', {1, 1, 1})
+                for _, card in ipairs(tblShopCards) do
+                    if card.getDescription() ~= '0 Remaining' then
+                        card.setRotation({0, 180, 0})
+                    end
+                end
+
+                booFinalRollOff = false
+                btnSubmitFinalRollOff.setInvisibleTo(tblPlayers)
+                txtSubmitFinalRollOff.setValue(' ')
+                tblFinalRollOff = {}
+
+                colCurrentPlayer = getNextPlayer()
+                Wait.time(function() prepTurn(colCurrentPlayer) end, 1)
+
+            else
+                broadcastToAll(colFROLead .. ' commands the pharaoh\'s favor! Congratulations!', {1, 1, 1})
+            end
+        else
+            colCurrentPlayer = getNextPlayer()
+            Wait.time(function() prepTurn(colCurrentPlayer) end, 1)
+        end
+    end
+end
+
+-- Count the scarabs in a player's stash. Will count multiple stacks.
+function countScarabs(color)
+    intCount = 0
+    for _, obj in ipairs(tblZonScarabPip[color].getObjects()) do
+        if obj.getQuantity() == -1 then
+            intCount = intCount + 1
+        else
+            intCount = intCount + obj.getQuantity()
+        end
+    end
+    for _, obj in ipairs(tblZonScarabReroll[color].getObjects()) do
+        if obj.getQuantity() == -1 then
+            intCount = intCount + 1
+        else
+            intCount = intCount + obj.getQuantity()
+        end
+    end
+
+    return intCount
+end
+
+function prepDelayedTurnButton(color)
+    colNextPlayerOffset = color
+    btnPassTurnDelayed.setInvisibleTo({})
+end
+
+function prepTurnDelayed(object, color, altClick)
+    prepTurn(colNextPlayerOffset)
+    --Button hiding was moved to prepTurn function
+end
+
+function testUseTreasure(color)
+    if tblCoinTreasure[color].getValue() == 1 then
+        for _, ownCard in ipairs(tblZonOwned[color].getObjects()) do
+            if ownCard.getName() == 'Treasure' then
+                return true
+            end
+        end
+    end
+
+    return false
+end
+
+function testUseBadOmen(color)
+    if tblCoinBadOmen[color].getValue() == 1 then
+        for _, ownCard in ipairs(tblZonOwned[color].getObjects()) do
+            if ownCard.getName() == 'Bad Omen' then
+                return true
+            end
+        end
+    end
+
+    return false
+end
+
+-- testBuy NOTES
+-- Give a table of tests, where each test is a 3-glyph code
+-- First is the amount, or number of dice needed
+-- Second is the type of test
+--      a = of a kind, s = straight, d = different, g = greater or equal, l = less or equal, o = odd, e = even
+-- Third is the type of restrictions. 0 if no restrictions
+--      really only used on 'a' tests, to cover 'pair of 6's' type tests
+--      or 'g' and 'l' tests, to give the limit
+
+-- Example: 7a0 is any seven of a kind.
+-- Example: {'3a6', '2a1'} three sixes, two ones.
+-- Example: 6s0 is a straight, 123456
+function testBuy(tests)
+    intTempOnes = intOnes
+    intTempTwos = intTwos
+    intTempThrees = intThrees
+    intTempFours = intFours
+    intTempFives = intFives
+    intTempSixes = intSixes
+    tblTestBuy = {intTempOnes, intTempTwos, intTempThrees, intTempFours, intTempFives, intTempSixes}
+
+    for _, test in ipairs(tests) do
+        amount = string.sub(test, 1, 1) + 0
+        type = string.sub(test, 2, 2)
+        restrict = string.sub(test, 3, 3) + 0
+        intCount = 0
+
+        if booShopOverride then
+            goto zcontinue
+        end
+
+        -- Matching cards
+        if type == 'a' then
+            if restrict == 0 then
+                for i, num in ipairs(tblTestBuy) do
+                    if num >= amount then
+                        tblTestBuy[i] = num - amount
+                        goto zcontinue
+                    end
+                end
+            else
+                if tblTestBuy[restrict] >= amount then
+                    tblTestBuy[restrict] = tblTestBuy[restrict] - amount
+                    goto zcontinue
+                end
+            end
+        end
+
+        -- Straight cards
+        if type == 's' then
+            for i, num in ipairs(tblTestBuy) do
+                if num > 0 then
+                    intCount = intCount + 1
+                    if intCount >= amount then
+                        goto zcontinue
+                    end
+                else
+                    intCount = 0
+                end
+            end
+        end
+
+        -- Cards all different (Max one of each value)
+        if type == 'd' then
+            for i, num in ipairs(tblTestBuy) do
+                if num > 1 then
+                    return false
+                elseif num == 1 then
+                    intCount = intCount + 1
+                end
+            end
+            if intCount >= amount then
+                goto zcontinue
+            end
+        end
+
+        -- Greater than or equal to
+        if type == 'g' then
+            for i, num in ipairs(tblTestBuy) do
+                if i < restrict then
+                    if num > 0 then
+                        return false
+                    end
+                else
+                    intCount = intCount + num
+                end
+            end
+            if intCount >= amount then
+                goto zcontinue
+            end
+        end
+
+        -- Less than or equal to
+        if type == 'l' then
+            for i, num in ipairs(tblTestBuy) do
+                if i > restrict then
+                    if num > 0 then
+                        return false
+                    end
+                else
+                    intCount = intCount +  num
+                end
+            end
+            if intCount >= amount then
+                goto zcontinue
+            end
+        end
+
+        -- Only odd valued cards
+        if type == 'o' then
+            for i, num in ipairs(tblTestBuy) do
+                if i % 2 == 0 then
+                    if num > 0 then
+                        return false
+                    end
+                else
+                    intCount = intCount + num
+                end
+            end
+            if intCount >= amount then
+                goto zcontinue
+            end
+        end
+
+        -- Only even valued cards
+        if type == 'e' then
+            for i, num in ipairs(tblTestBuy) do
+                if i % 2 == 1 then
+                    if num > 0 then
+                        return false
+                    end
+                else
+                    intCount = intCount + num
+                end
+            end
+            if intCount >= amount then
+                goto zcontinue
+            end
+        end
+
+        return false
+
+    end ::zcontinue::
+
+    return true
+end
+
+-- Tier 7 A
+function wrapBuyTier7A1(object, color, altClick)
+    if testBuy({'7a0'}) then
+        buyCard(tblShopCards[1], color, false)
+    else
+        broadcastToColor('You do not have the dice to buy this card!', color, {1, 1, 1})
+    end
+end
+
+function wrapBuyTier7A2(object, color, altClick)
+    if testBuy({'3a0', '2a0', '2a0'}) then
+        buyCard(tblShopCards[2], color, false)
+    else
+        broadcastToColor('You do not have the dice to buy this card!', color, {1, 1, 1})
+    end
+end
+
+function wrapBuyTier7A3(object, color, altClick)
+    if testBuy({'4a0', '3a0'}) then
+        buyCard(tblShopCards[11], color, false)
+    else
+        broadcastToColor('You do not have the dice to buy this card!', color, {1, 1, 1})
+    end
+end
+
+function wrapBuyTier7A4(object, color, altClick)
+    if intPips >= 40 then
+        buyCard(tblShopCards[16], color, false)
+    else
+        broadcastToColor('You do not have the dice to buy this card!', color, {1, 1, 1})
+    end
+end
+
+-- Tier 7 B
+function wrapBuyTier7B1(object, color, altClick)
+    wrapBuyTier7A1(object, color, altClick)
+end
+
+function wrapBuyTier7B2(object, color, altClick)
+
+    if testBuy({'3a1', '4a0'}) then
+        buyCard(tblShopCards[2], color, false)
+    else
+        broadcastToColor('You do not have the dice to buy this card!', color, {1, 1, 1})
+    end
+end
+
+function wrapBuyTier7B3(object, color, altClick)
+    if testBuy({'5a0', '2a0'}) then
+        buyCard(tblShopCards[11], color, false)
+    else
+        broadcastToColor('You do not have the dice to buy this card!', color, {1, 1, 1})
+    end
+end
+
+function wrapBuyTier7B4(object, color, altClick)
+    if intPips >= 45 then
+        buyCard(tblShopCards[16], color, false)
+    else
+        broadcastToColor('You do not have the dice to buy this card!', color, {1, 1, 1})
+    end
+end
+
+-- Tier 6 A
+function wrapBuyTier6A1(object, color, altClick)
+    if intOverQF > 0 then
+        intOverQF = intOverQF - 1
+        buyCard(tblShopCards[3], color, true)
+
+    elseif testBuy({'6a0'}) then
+        buyCard(tblShopCards[3], color, false)
+    else
+        broadcastToColor('You do not have the dice to buy this card!', color, {1, 1, 1})
+    end
+end
+
+function wrapBuyTier6A2(object, color, altClick)
+    if intOverQF > 0 then
+        intOverQF = intOverQF - 1
+        buyCard(tblShopCards[4], color, true)
+
+    elseif testBuy({'2a0', '2a0', '2a0'}) then
+        buyCard(tblShopCards[4], color, false)
+    else
+        broadcastToColor('You do not have the dice to buy this card!', color, {1, 1, 1})
+    end
+end
+
+function wrapBuyTier6A3(object, color, altClick)
+    if intOverQF > 0 then
+        intOverQF = intOverQF - 1
+        buyCard(tblShopCards[12], color, true)
+
+    elseif intOverRP > 0 then
+        intOverRP = intOverRP - 1
+        buyCard(tblShopCards[12], color, true)
+
+    elseif testBuy({'4a0', '2a0'}) then
+        buyCard(tblShopCards[12], color, false)
+    else
+        broadcastToColor('You do not have the dice to buy this card!', color, {1, 1, 1})
+    end
+end
+
+function wrapBuyTier6A4(object, color, altClick)
+    if intPips >= 30 then
+        buyCard(tblShopCards[16], color, false)
+    else
+        broadcastToColor('You do not have the dice to buy this card!', color, {1, 1, 1})
+    end
+end
+
+-- Tier 6 B
+function wrapBuyTier6B1(object, color, altClick)
+    wrapBuyTier6A1(object, color, altClick)
+end
+
+function wrapBuyTier6B2(object, color, altClick)
+    if intOverQF > 0 then
+        intOverQF = intOverQF - 1
+        buyCard(tblShopCards[4], color, true)
+
+    elseif testBuy({'6s0'}) then
+        buyCard(tblShopCards[4], color, false)
+    else
+        broadcastToColor('You do not have the dice to buy this card!', color, {1, 1, 1})
+    end
+end
+
+function wrapBuyTier6B3(object, color, altClick)
+    if intOverQF > 0 then
+        intOverQF = intOverQF - 1
+        buyCard(tblShopCards[12], color, true)
+
+    elseif intOverRP > 0 then
+        intOverRP = intOverRP - 1
+        buyCard(tblShopCards[12], color, true)
+
+    elseif testBuy({'3a0', '3a0'}) then
+        buyCard(tblShopCards[12], color, false)
+    else
+        broadcastToColor('You do not have the dice to buy this card!', color, {1, 1, 1})
+    end
+end
+
+function wrapBuyTier6B4(object, color, altClick)
+    if intPips >= 35 then
+        buyCard(tblShopCards[16], color, false)
+    else
+        broadcastToColor('You do not have the dice to buy this card!', color, {1, 1, 1})
+    end
+end
+
+--Tier 5 A
+function wrapBuyTier5A1(object, color, altClick)
+    if intOverQF > 0 then
+        intOverQF = intOverQF - 1
+        buyCard(tblShopCards[5], color, true)
+
+    elseif testBuy({'5a0'}) then
+        buyCard(tblShopCards[5], color, false)
+    else
+        broadcastToColor('You do not have the dice to buy this card!', color, {1, 1, 1})
+    end
+end
+
+function wrapBuyTier5A2(object, color, altClick)
+    if intOverQF > 0 then
+        intOverQF = intOverQF - 1
+        buyCard(tblShopCards[6], color, true)
+
+    elseif testBuy({'5s0'}) then
+        buyCard(tblShopCards[6], color, false)
+    else
+        broadcastToColor('You do not have the dice to buy this card!', color, {1, 1, 1})
+    end
+end
+
+function wrapBuyTier5A3(object, color, altClick)
+    if intOverQF > 0 then
+        intOverQF = intOverQF - 1
+        buyCard(tblShopCards[13], color, true)
+
+    elseif intOverRP > 0 then
+        intOverRP = intOverRP - 1
+        buyCard(tblShopCards[13], color, true)
+
+    elseif testBuy({'3a0', '2a0'}) then
+        buyCard(tblShopCards[13], color, false)
+    else
+        broadcastToColor('You do not have the dice to buy this card!', color, {1, 1, 1})
+    end
+end
+
+function wrapBuyTier5A4(object, color, altClick)
+    if intPips >= 25 then
+        buyCard(tblShopCards[18], color, false)
+    else
+        broadcastToColor('You do not have the dice to buy this card!', color, {1, 1, 1})
+    end
+end
+
+-- Tier 5 B
+function wrapBuyTier5B1(object, color, altClick)
+    wrapBuyTier5A1(object, color, altClick)
+end
+
+function wrapBuyTier5B2(object, color, altClick)
+    if intOverQF > 0 then
+        intOverQF = intOverQF - 1
+        buyCard(tblShopCards[6], color, true)
+
+    elseif testBuy({'5l2'}) then
+        buyCard(tblShopCards[6], color, false)
+    else
+        broadcastToColor('You do not have the dice to buy this card!', color, {1, 1, 1})
+    end
+end
+
+function wrapBuyTier5B3(object, color, altClick)
+    if intOverQF > 0 then
+        intOverQF = intOverQF - 1
+        buyCard(tblShopCards[13], color, true)
+
+    elseif intOverRP > 0 then
+        intOverRP = intOverRP - 1
+        buyCard(tblShopCards[13], color, true)
+
+    elseif testBuy({'3a6', '2a1'}) then
+        buyCard(tblShopCards[13], color, false)
+    else
+        broadcastToColor('You do not have the dice to buy this card!', color, {1, 1, 1})
+    end
+end
+
+function wrapBuyTier5B4(object, color, altClick)
+    if testBuy({'5d0'}) then
+        buyCard(tblShopCards[18], color, false)
+    else
+        broadcastToColor('You do not have the dice to buy this card!', color, {1, 1, 1})
+    end
+end
+
+--Tier 4 A
+function wrapBuyTier4A1(object, color, altClick)
+    if intOverQF > 0 then
+        intOverQF = intOverQF - 1
+        buyCard(tblShopCards[7], color, true)
+
+    elseif testBuy({'4a0'}) then
+        buyCard(tblShopCards[7], color, false)
+    else
+        broadcastToColor('You do not have the dice to buy this card!', color, {1, 1, 1})
+    end
+end
+
+function wrapBuyTier4A2(object, color, altClick)
+    if intOverQF > 0 then
+        intOverQF = intOverQF - 1
+        buyCard(tblShopCards[8], color, true)
+
+    elseif testBuy({'4s0'}) then
+        buyCard(tblShopCards[8], color, false)
+    else
+        broadcastToColor('You do not have the dice to buy this card!', color, {1, 1, 1})
+    end
+end
+
+function wrapBuyTier4A3(object, color, altClick)
+    if intOverQF > 0 then
+        intOverQF = intOverQF - 1
+        buyCard(tblShopCards[14], color, true)
+
+    elseif intOverRP > 0 then
+        intOverRP = intOverRP - 1
+        buyCard(tblShopCards[14], color, true)
+
+    elseif testBuy({'2a0', '2a0'}) then
+        buyCard(tblShopCards[14], color, false)
+    else
+        broadcastToColor('You do not have the dice to buy this card!', color, {1, 1, 1})
+    end
+end
+
+function wrapBuyTier4A4(object, color, altClick)
+    if intPips >= 20 then
+        buyCard(tblShopCards[19], color, false)
+    else
+        broadcastToColor('You do not have the dice to buy this card!', color, {1, 1, 1})
+    end
+end
+
+-- Tier 4 B
+function wrapBuyTier4B1(object, color, altClick)
+    wrapBuyTier4A1(object, color, altClick)
+end
+
+function wrapBuyTier4B2(object, color, altClick)
+    if intOverQF > 0 then
+        intOverQF = intOverQF - 1
+        buyCard(tblShopCards[8], color, true)
+
+    elseif testBuy({'4g5'}) then
+        buyCard(tblShopCards[8], color, false)
+    else
+        broadcastToColor('You do not have the dice to buy this card!', color, {1, 1, 1})
+    end
+end
+
+function wrapBuyTier4B3(object, color, altClick)
+    if intOverQF > 0 then
+        intOverQF = intOverQF - 1
+        buyCard(tblShopCards[14], color, true)
+
+    elseif intOverRP > 0 then
+        intOverRP = intOverRP - 1
+        buyCard(tblShopCards[14], color, true)
+
+    elseif testBuy({'2a6', '2a1'}) then
+        buyCard(tblShopCards[14], color, false)
+    else
+        broadcastToColor('You do not have the dice to buy this card!', color, {1, 1, 1})
+    end
+end
+
+function wrapBuyTier4B4(object, color, altClick)
+    if testBuy({'4d0'}) then
+        buyCard(tblShopCards[19], color, false)
+    else
+        broadcastToColor('You do not have the dice to buy this card!', color, {1, 1, 1})
+    end
+end
+
+--Tier 3 A
+function wrapBuyTier3A1(object, color, altClick)
+    if intOverQF > 0 then
+        intOverQF = intOverQF - 1
+        buyCard(tblShopCards[9], color, true)
+
+    elseif intOverSP > 0 then
+        intOverSP = intOverSP - 1
+        buyCard(tblShopCards[9], color, true)
+
+    elseif testBuy({'3a0'}) then
+        buyCard(tblShopCards[9], color, false)
+    else
+        broadcastToColor('You do not have the dice to buy this card!', color, {1, 1, 1})
+    end
+end
+
+function wrapBuyTier3A2(object, color, altClick)
+    if intOverQF > 0 then
+        intOverQF = intOverQF - 1
+        buyCard(tblShopCards[10], color, true)
+
+    elseif intOverSP > 0 then
+        intOverSP = intOverSP - 1
+        buyCard(tblShopCards[10], color, true)
+
+    elseif testBuy({'2a0'}) then
+        buyCard(tblShopCards[10], color, false)
+    else
+        broadcastToColor('You do not have the dice to buy this card!', color, {1, 1, 1})
+    end
+end
+
+function wrapBuyTier3A3(object, color, altClick)
+    if intOverQF > 0 then
+        intOverQF = intOverQF - 1
+        buyCard(tblShopCards[15], color, true)
+
+    elseif intOverRP > 0 then
+        intOverRP = intOverRP - 1
+        buyCard(tblShopCards[15], color, true)
+
+    elseif intOverSP > 0 then
+        intOverSP = intOverSP - 1
+        buyCard(tblShopCards[15], color, true)
+
+    elseif testBuy({'3e0'}) then
+        buyCard(tblShopCards[15], color, false)
+    else
+        broadcastToColor('You do not have the dice to buy this card!', color, {1, 1, 1})
+    end
+end
+
+function wrapBuyTier3A4(object, color, altClick)
+    if intOverSP > 0 then
+        intOverSP = intOverSP - 1
+        buyCard(tblShopCards[20], color, true)
+
+    elseif intPips >= 10 then
+        buyCard(tblShopCards[20], color, false)
+    else
+        broadcastToColor('You do not have the dice to buy this card!', color, {1, 1, 1})
+    end
+end
+
+-- Tier 3 B
+function wrapBuyTier3B1(object, color, altClick)
+    wrapBuyTier3A1(object, color, altClick)
+end
+
+function wrapBuyTier3B2(object, color, altClick)
+    if intOverQF > 0 then
+        intOverQF = intOverQF - 1
+        buyCard(tblShopCards[10], color, true)
+
+    elseif intOverSP > 0 then
+        intOverSP = intOverSP - 1
+        buyCard(tblShopCards[10], color, true)
+
+    elseif testBuy({'3g4'}) then
+        buyCard(tblShopCards[10], color, false)
+    else
+        broadcastToColor('You do not have the dice to buy this card!', color, {1, 1, 1})
+    end
+end
+
+function wrapBuyTier3B3(object, color, altClick)
+    if intOverQF > 0 then
+        intOverQF = intOverQF - 1
+        buyCard(tblShopCards[15], color, true)
+
+    elseif intOverRP > 0 then
+        intOverRP = intOverRP - 1
+        buyCard(tblShopCards[15], color, true)
+
+    elseif intOverSP > 0 then
+        intOverSP = intOverSP - 1
+        buyCard(tblShopCards[15], color, true)
+
+    elseif testBuy({'3o0'}) then
+        buyCard(tblShopCards[15], color, false)
+    else
+        broadcastToColor('You do not have the dice to buy this card!', color, {1, 1, 1})
+    end
+end
+
+function wrapBuyTier3B4(object, color, altClick)
+    if intOverSP > 0 then
+        intOverSP = intOverSP - 1
+        buyCard(tblShopCards[9], color, true)
+
+    elseif intPips >= 15 then
+        buyCard(tblShopCards[20], color, false)
+    else
+        broadcastToColor('You do not have the dice to buy this card!', color, {1, 1, 1})
+    end
+end
