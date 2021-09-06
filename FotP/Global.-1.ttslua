@@ -24,6 +24,7 @@ function onLoad()
 
     -- Buttons placed around the table
     btnGetScarab = getObjectFromGUID('2f6406')
+    btnGetScarab2 = getObjectFromGUID('0a15f8')
     btnLoseScarabPip = getObjectFromGUID('7c2c23')
     btnLoseScarabReroll = getObjectFromGUID('62f1aa')
 
@@ -85,6 +86,7 @@ function onLoad()
     tblShopCards = {}
     tblRollCards = {}
     tblShopToRoll = {0, 0, 0, 0}
+    tblUsedCardMarkers = {}
 
     -- tblIntOwned, intRollDice, intShopDice are used to place new objects nicely
     tblIntOwned = {Red = 0, Green = 0, Blue = 0, White = 0}
@@ -112,8 +114,9 @@ function onLoad()
     colFROLead = 'Nobody'
     booFRONewLead = false
 
-    tblRollBonus = {Red = 0, Green = 0, Blue = 0, White = 0}
+    tblOmenPenalty = {Red = false, Green = false, Blue = false, White = false}
     tblRollPenalty = {Red = 0, Green = 0, Blue = 0, White = 0}
+    tblRollBonus = {Red = 0, Green = 0, Blue = 0, White = 0}
 
     -- Hide the Bad Omen and Treasure coins
     -- I've had issues iterating over the table, so one by one
@@ -137,6 +140,10 @@ function onLoad()
 
     -- Scarab Token Chip
     btnGetScarab.createButton({
+        click_function='gainScarab', function_owner=global,
+        position={0, 0.05, 0}, height=1000, width=1000, color={1,1,1,0}, tooltip='Get a Scarab Token'
+    })
+    btnGetScarab2.createButton({
         click_function='gainScarab', function_owner=global,
         position={0, 0.05, 0}, height=1000, width=1000, color={1,1,1,0}, tooltip='Get a Scarab Token'
     })
@@ -194,6 +201,16 @@ function onLoad()
     btnRollForMe.setInvisibleTo(tblPossibleColors)
     btnPassTurnDelayed.setInvisibleTo(tblPossibleColors)
     btnSubmitFinalRollOff.setInvisibleTo(tblPossibleColors)
+end
+
+-- Helper function, as position is not exact. So we test within a tolerance of 0.01.
+function _testNearZero(floValue)
+    testVal = math.abs(floValue)
+    if testVal <= 0.01 then
+        return true
+    else
+        return false
+    end
 end
 
 -- Prepares the shop, roll, and player areas. Determines first roll.
@@ -403,19 +420,19 @@ end
 -- Duplicate a card from the shop table into the roll space
 function shopToRoll(obj)
     -- Though we place the cards at -41.10, it's not exact. So test location with a tolerance
-    if math.abs(obj.getPosition()[1] + 41.10) <= 0.01 then
+    if _testNearZero(obj.getPosition()[1] + 41.10) then
         table.insert(tblRollCards, obj.clone({position = {22 - (6 * tblShopToRoll[1]), 0.97, 19}, rotation = {0, 180, 180}}))
         tblShopToRoll[1] = tblShopToRoll[1] + 1
 
-    elseif math.abs(obj.getPosition()[1] + 35.05) <= 0.01 then
+    elseif _testNearZero(obj.getPosition()[1] + 35.05) then
         table.insert(tblRollCards, obj.clone({position = {22 - (6 * tblShopToRoll[2]), 0.97, 15}, rotation = {0, 180, 180}}))
         tblShopToRoll[2] = tblShopToRoll[2] + 1
 
-    elseif math.abs(obj.getPosition()[1] + 29.00) <= 0.01 then
+    elseif _testNearZero(obj.getPosition()[1] + 29.00) then
         table.insert(tblRollCards, obj.clone({position = {30, 0.97, 8 - (4 * tblShopToRoll[3])}, rotation = {0, 180, 180}}))
         tblShopToRoll[3] = tblShopToRoll[3] + 1
 
-    elseif math.abs(obj.getPosition()[1] + 22.95) <= 0.01 then
+    elseif _testNearZero(obj.getPosition()[1] + 22.95) then
         table.insert(tblRollCards, obj.clone({position = {36, 0.97, 8 - (4 * tblShopToRoll[4])}, rotation = {0, 180, 180}}))
         tblShopToRoll[4] = tblShopToRoll[4] + 1
 
@@ -440,13 +457,13 @@ function shopToRoll(obj)
             end
         end
     -- Blue cards are in the middle, at x=30
-    elseif  math.abs(objNewCard.getPosition()[1] - 30) <= 0.01 then
+    elseif _testNearZero(objNewCard.getPosition()[1] - 30) then
         objNewCard.createButton({
             click_function='flipBlue', function_owner=global,
             position={0, 0.2, 0}, height=1500, width=1060, color={1,1,1,0}, tooltip='Activate ' .. objNewCard.getName()
         })
     -- Red cards are furthest to the right, at x=36
-    elseif math.abs(objNewCard.getPosition()[1] - 36) <= 0.01 then
+    elseif _testNearZero(objNewCard.getPosition()[1] - 36) then
         for _, actCard in ipairs(tblOptionRed) do
             if objNewCard.getName() == actCard then
                 objNewCard.createButton({
@@ -463,19 +480,19 @@ end
 function setShopRemaining(tblShopCards)
     for i, shopCard in ipairs(tblShopCards) do
         -- See note on shopToRoll. Positions aren't exact, so we do an absolute tolerance.
-        if math.abs(shopCard.getPosition()[3] - 22.40) <= 0.01 then
+        if _testNearZero(shopCard.getPosition()[3] - 22.40) then
             shopCard.setDescription("1 Remaining")
 
-        elseif math.abs(shopCard.getPosition()[3] - 14.40) <= 0.01 then
+        elseif _testNearZero(shopCard.getPosition()[3] - 14.40) then
             shopCard.setDescription(math.max(1, #tblPlayers - 2) .. ' Remaining')
 
-        elseif math.abs(shopCard.getPosition()[3] - 6.40) <= 0.01 then
+        elseif _testNearZero(shopCard.getPosition()[3] - 6.40) then
             shopCard.setDescription(math.max(1, #tblPlayers - 2) .. ' Remaining')
 
-        elseif math.abs(shopCard.getPosition()[3] + 1.60) <= 0.01 then
+        elseif _testNearZero(shopCard.getPosition()[3] + 1.60) then
             shopCard.setDescription(math.max(1, #tblPlayers - 1) .. ' Remaining')
 
-        elseif math.abs(shopCard.getPosition()[3] + 9.60) <= 0.01 then
+        elseif _testNearZero(shopCard.getPosition()[3] + 9.60) then
             shopCard.setDescription(#tblPlayers .. " Remaining")
         end
     end
@@ -555,16 +572,25 @@ function prepTurn(color)
         obj.destruct()
     end
 
+    -- Delete any existing reversi chips
+    for _, obj in ipairs(tblUsedCardMarkers) do
+        obj.destruct()
+    end
+    tblUsedCardMarkers = {}
+
     broadcastToAll(colCurrentPlayer .. ' to play!', colCurrentPlayer)
 
+    -- Check for any bonus dice or penalty dice.
     if tblRollBonus[color] > 0 then
         addRollDice(true, 1, tblRollBonus[color])
         tblRollBonus[color] = 0
     end
 
     if tblRollPenalty[color] > 0 then
+        -- Penalties do not apply to the final roll-off
         if booFinalRollOff then
             broadcastToColor('It is the final roll-off! No penalty!', color, {1, 1, 1})
+            tblRollPenalty[color] = 0
         else
             broadcastToColor('You have a penalty of ' .. tblRollPenalty[color] .. ' dice! The first dice you lock will be deleted!', color, {1, 1, 1})
         end
@@ -592,76 +618,135 @@ function prepTurn(color)
         else
             for __, rollCard in ipairs(tblRollCards) do
                 if strName == rollCard.getName() then
-                    rollCard.setRotation(ownCard.getRotation())
+                    if _testNearZero(ownCard.getRotation()[2]) then
+                        markCardUsed(rollCard, color)
+                    else
+                        rollCard.setRotation({0, 180, 0})
+                    end
 
                     -- List of forced rolls, MUST add these dice
                     if strName == 'Start' then
                         addRollDice(true, 1, 3)
+                        markCardUsed(rollCard, color)
 
                     elseif strName == 'Farmer' then
                         addRollDice(true, 1, 1)
+                        markCardUsed(rollCard, color)
 
                     elseif strName == 'Indentured Worker' then
                         addRollDice(true, 2, 1)
+                        markCardUsed(rollCard, color)
 
                     elseif strName == 'Serf' then
                         addRollDice(true, 3, 1)
+                        markCardUsed(rollCard, color)
 
                     elseif strName == 'Artisan' then
                         addRollDice(true, 4, 1)
+                        markCardUsed(rollCard, color)
 
                     elseif strName == 'Builder' then
                         gainScarab(object, color)
                         addRollDice(true, 2, 1)
+                        markCardUsed(rollCard, color)
 
                     elseif strName == 'Noble Adoption' then
                         addRollDice(true, 5, 1)
+                        markCardUsed(rollCard, color)
 
                     elseif strName == 'Palace Servants' then
                         addRollDice(true, 2, 2)
+                        markCardUsed(rollCard, color)
 
                     elseif strName == 'Conspirator' then
                         addRollDice(true, 6, 1)
+                        markCardUsed(rollCard, color)
 
                     elseif strName == 'Ship Captain' then
                         addRollDice(true, 7, 1)
+                        markCardUsed(rollCard, color)
 
                     elseif strName == 'Tomb Builder' then
                         gainScarab(object, color)
                         addRollDice(true, 1, 1)
+                        markCardUsed(rollCard, color)
 
                     -- In addition to scarab, reset description
                     elseif strName == 'Estate Overseer' then
                         gainScarab(object, color)
                         rollCard.setDescription('0')
+                        markCardUsed(rollCard, color)
 
                     elseif strName == 'Grain Trader' then
                         gainScarab(object, color)
                         gainScarab(object, color)
                         addRollDice(true, 1, 1)
+                        markCardUsed(rollCard, color)
 
                     elseif strName == 'Royal Attendants' then
                         addRollDice(true, 1, 1)
                         addRollDice(true, 2, 1)
+                        markCardUsed(rollCard, color)
 
                     elseif strName == 'General' then
                         addRollDice(true, 1, 2)
+                        markCardUsed(rollCard, color)
 
                     -- In addition to forced roll, reset description
                     elseif strName == 'Granary Master' then
                         addRollDice(true, 1, 1)
                         rollCard.setDescription('0')
+                        markCardUsed(rollCard, color)
 
                     elseif strName == 'Grand Vizier' then
                         addRollDice(true, 8, 1)
+                        markCardUsed(rollCard, color)
 
                     elseif strName == 'Beggar' then
                         gainScarab(object, color)
+                        markCardUsed(rollCard, color)
                     end
                 end
             end
         end
     end
+
+    --If the owner is affected by an omen, delete a standard die
+    broadcastToAll(tblOmenPenalty[color], {1, 1, 1})
+    if tblOmenPenalty[color] then
+        --have to delay enforcing omen penalty, as dice are not in zone at spawn
+        Wait.time(function() enactOmenPenalty(color) end, 1)
+    end
+end
+
+-- Add the reversi chip to mark a card as used
+function markCardUsed(card, color)
+    posx = card.getPosition()[1] + 2
+    posy = card.getPosition()[2] + 1
+    posz = card.getPosition()[3] + 1
+    newChip = spawnObject({
+        type = 'reversi_chip',
+        position = {posx, posy, posz}
+    })
+
+    newChip.setColorTint(color)
+    table.insert(tblUsedCardMarkers, 1, newChip)
+end
+
+-- Check for a reversi chip on a card. Intended to be called from other functions.
+function testCardUsed(object)
+    posx = object.getPosition()[1]
+    posz = object.getPosition()[3]
+
+    for _, revChip in ipairs(tblUsedCardMarkers) do
+        if _testNearZero(revChip.getPosition()[1] - 2 - posx) then
+            if _testNearZero(revChip.getPosition()[3] - 1 - posz) then
+                return true
+            end
+        end
+    end
+
+    return false
 end
 
 -- Add dice to the roll zone, should be triggered by prepTurn function on each card that adds dice.
@@ -703,221 +788,253 @@ function addRollDice(booForced, type, amount, value)
     end
 end
 
--- object is parent object, color is who clicked, altClick is if they didn't left-click
-function activateRollCard(object, color, altClick)
-    -- Burial Mask can be activated at any time.
-    if object.getName() == 'Burial Mask' then
-        gainScarab(object, color)
-        gainScarab(object, color)
-        gainScarab(object, color)
-        gainScarab(object, color)
-        gainScarab(object, color)
-        flipOwnedRed(object, color)
-
-    -- These cards only get brought in AFTER the first roll.
-    elseif intRolls > 0 then
-        -- Start, Tier 3 Yellow
-        if object.getName() == 'Herder' then
-            addRollDice(true, 1, 1)
-        elseif object.getName() == 'Guard' then
-            addRollDice(false, 1, 1, 2)
-        elseif object.getName() == 'Worker' then
-            addRollDice(false, 1, 1, 1)
-
-        -- Tier 4 Yellow
-        elseif object.getName() == 'Soldier' then
-            addRollDice(false, 1, 1, 3)
-
-        -- Tier 5 Yellow
-        elseif object.getName() == 'Charioteer' then
-            addRollDice(false, 1, 1, 5)
-        elseif object.getName() == 'Overseer' then
-            addRollDice(false, 1, 1, 4)
-
-        -- Tier 6 yellow
-        elseif object.getName() == 'Embalmer' then
-            addRollDice(false, 1, 1, 6)
-        elseif object.getName() == 'Estate Overseer' then
-            addRollDice(false, 1, 1, math.min(intRolls, 6))
-
-        -- Tier 7 Yellow
-        elseif object.getName() == 'Queen' then
-            -- Queen needs a value so it can be shopped immediately
-            addRollDice(false, 1, 1)
-        elseif object.getName() == 'Granary Master' then
-            gainScarab(object, color)
-            addRollDice(false, 1, 1, math.min(intRolls, 6))
-
-        -- Blue Cards
-        elseif object.getName() == 'Grain Merchant' then
-            gainScarab(object, color)
-
-        -- Red Cards
-        elseif object.getName() == 'Ankh' then
-            intMax = countScarabs(color)
-            i = 0
-            while i < intMax do
-                gainScarab(object, color)
-                i = i + 1
-            end
-            flipOwnedRed(object, color)
-
-        elseif object.getName() == 'Ancestral Guidance' then
-            gainScarab(object, color)
-            gainScarab(object, color)
-            addRollDice(true, 1, 1)
-            flipOwnedRed(object, color)
-        end
-
-        if object.getName() == 'Palace Key' then
-            broadcastToColor('Palace Key must be used at the start of your turn.', color, {1, 1, 1})
-        else
-            -- Flips the card over. One, shows that it was executed. Two, prevents clicking the button! Woo!
-            object.setRotation({0, 180, 180})
-        end
-
-    elseif object.getName() == 'Palace Key' then
-        addRollDice(true, 1, 2)
-        flipOwnedRed(object, color)
-        object.setRotation({0, 180, 180})
-
-    else
-        broadcastToColor('You must roll at least once before bringing in optional dice.', color, {1, 1, 1})
-    end
-
-    if object.getName() == 'Priest of the Dead' then
-        if #zonRoll.getObjects() == 0 then
-            addRollDice(false, 1, 1)
-            object.setRotation({0, 180, 180})
-        else
-            broadcastToColor('You still have dice to roll!', color, {1, 1, 1})
-        end
-    end
-
-    if object.getName() == 'Spirit of the Dead' then
-        if #zonRoll.getObjects() == 0 then
-            addRollDice(false, 1, 1)
-            flipOwnedRed(object, color)
-            object.setRotation({0, 180, 180})
-        else
-            broadcastToColor('You still have dice to roll!', color, {1, 1, 1})
+-- The way omen works, we need to delay checking the zone for dice. This function is awaited to allow for gamestate to settle.
+function enactOmenPenalty(color)
+    for _, die in ipairs(zonRoll.getObjects()) do
+        broadcastToAll(die.getName(), {1, 1, 1})
+        if die.getName() == 'Standard' then
+            die.destruct()
+            tblOmenPenalty[color] = false
+            break
         end
     end
 end
 
+-- object is parent object, color is who clicked, altClick is if they didn't left-click
+function activateRollCard(object, color, altClick)
+    -- First, check that the card has not been used yet.
+    if not testCardUsed(object) then
+        -- Burial Mask can be activated at any time.
+        if object.getName() == 'Burial Mask' then
+            gainScarab(object, color)
+            gainScarab(object, color)
+            gainScarab(object, color)
+            gainScarab(object, color)
+            gainScarab(object, color)
+            flipOwnedRed(object, color)
+
+        -- These cards only get brought in AFTER the first roll.
+        elseif intRolls > 0 then
+            -- Start, Tier 3 Yellow
+            if object.getName() == 'Herder' then
+                addRollDice(true, 1, 1)
+                markCardUsed(object, color)
+            elseif object.getName() == 'Guard' then
+                addRollDice(false, 1, 1, 2)
+                markCardUsed(object, color)
+            elseif object.getName() == 'Worker' then
+                addRollDice(false, 1, 1, 1)
+                markCardUsed(object, color)
+
+            -- Tier 4 Yellow
+            elseif object.getName() == 'Soldier' then
+                addRollDice(false, 1, 1, 3)
+                markCardUsed(object, color)
+
+            -- Tier 5 Yellow
+            elseif object.getName() == 'Charioteer' then
+                addRollDice(false, 1, 1, 5)
+                markCardUsed(object, color)
+            elseif object.getName() == 'Overseer' then
+                addRollDice(false, 1, 1, 4)
+                markCardUsed(object, color)
+
+            -- Tier 6 yellow
+            elseif object.getName() == 'Embalmer' then
+                addRollDice(false, 1, 1, 6)
+                markCardUsed(object, color)
+            elseif object.getName() == 'Estate Overseer' then
+                addRollDice(false, 1, 1, math.min(intRolls, 6))
+                markCardUsed(object, color)
+
+            -- Tier 7 Yellow
+            elseif object.getName() == 'Queen' then
+                addRollDice(false, 1, 1)
+                markCardUsed(object, color)
+            elseif object.getName() == 'Granary Master' then
+                gainScarab(object, color)
+                addRollDice(false, 1, 1, math.min(intRolls, 6))
+                markCardUsed(object, color)
+
+            -- Red Cards
+            elseif object.getName() == 'Ankh' then
+                intMax = countScarabs(color)
+                i = 0
+                while i < intMax do
+                    gainScarab(object, color)
+                    i = i + 1
+                end
+                flipOwnedRed(object, color)
+
+            elseif object.getName() == 'Ancestral Guidance' then
+                gainScarab(object, color)
+                gainScarab(object, color)
+                addRollDice(true, 1, 1)
+                flipOwnedRed(object, color)
+            end
+
+            if object.getName() == 'Palace Key' then
+                broadcastToColor('Palace Key must be used at the start of your turn.', color, {1, 1, 1})
+            end
+
+        elseif object.getName() == 'Palace Key' then
+            addRollDice(true, 1, 2)
+            flipOwnedRed(object, color)
+
+        else
+            broadcastToColor('You must roll at least once before bringing in optional dice.', color, {1, 1, 1})
+        end
+
+        if object.getName() == 'Priest of the Dead' then
+            if #zonRoll.getObjects() == 0 then
+                addRollDice(false, 1, 1)
+                object.setRotation({0, 180, 180})
+                markCardUsed(object, color)
+            else
+                broadcastToColor('You still have dice to roll!', color, {1, 1, 1})
+            end
+        end
+
+        if object.getName() == 'Spirit of the Dead' then
+            if #zonRoll.getObjects() == 0 then
+                addRollDice(false, 1, 1)
+                flipOwnedRed(object, color)
+            else
+                broadcastToColor('You still have dice to roll!', color, {1, 1, 1})
+            end
+        end
+    else
+        broadcastToColor('You have already used this card!', color, {1, 1, 1})
+    end
+end
+
+-- Specific for blue cards. Most of these cards have contextual actions too complex to easily code.
 function flipBlue(object, color)
-    object.setRotation({0, 180, 180})
+    if not testCardUsed(object) then
+        if object.getName() == 'Grain Merchant' then
+            gainScarab(object, color)
+        end
+
+        markCardUsed(object, color)
+    else
+        broadcastToColor('You have already used this card!', color, {1, 1, 1})
+    end
 end
 
 -- called after activating a red card - finds the owned red card and flips it
 function flipOwnedRed(object, color)
     for _, ownCard in ipairs(tblZonOwned[color].getObjects()) do
         if ownCard.getName() == object.getName() then
-            ownCard.setRotation({0, 180, 180})
+            ownCard.setRotation({0, 0, 0})
             break
         end
     end
+
+    -- Mark the rollCard as well
+    markCardUsed(object, color)
 end
 
 -- The function is called whenever ANY object enters a zone with the same tags.
 -- Currently, only the zonShop uses this to lock dice entering the zone.
 function onObjectEnterZone(zone, object)
-    if object.hasTag('MustRoll') and zone == zonShop then
-        broadcastToColor('You must roll this die before using it!', colCurrentPlayer, {1, 1, 1})
-
-    elseif zone == zonShop then
+    if zone == zonShop then
         if tblRollPenalty[colCurrentPlayer] > 0 then
             object.destruct()
             tblRollPenalty[colCurrentPlayer] = tblRollPenalty[colCurrentPlayer] - 1
 
             if tblRollPenalty[colCurrentPlayer] > 0 then
-                broadcastToColor('The penalty remains! ' .. tblRollPenalty[colCurrentPlayer] .. ' more dice.', colCurrentPlayer, {1, 1, 1})
+                -- There should only ever be two penalties, caused by 'Bad Omen' card. So I can use "1 more die" here. Grammar!
+                broadcastToColor('The penalty remains! ' .. tblRollPenalty[colCurrentPlayer] .. ' more die.', colCurrentPlayer, {1, 1, 1})
             else
                 broadcastToColor('The penalty is lifted!', colCurrentPlayer, {1, 1, 1})
             end
-        end
 
-        -- drop the die out of the player's grip
-        object.drop()
-        object.unregisterCollisions()
+        elseif object.hasTag('MustRoll') then
+            broadcastToColor('You must roll this die before using it!', colCurrentPlayer, {1, 1, 1})
 
-        -- remove any velocity so the die stays still
-        object.setVelocity({0, 0, 0})
-        object.setAngularVelocity({0, 0, 0})
+        else
+            -- drop the die out of the player's grip
+            object.drop()
+            object.unregisterCollisions()
 
-        -- prep the counter to arrange dice nicely
-        intShopDice = intShopDice + 1
+            -- remove any velocity so the die stays still
+            object.setVelocity({0, 0, 0})
+            object.setAngularVelocity({0, 0, 0})
 
-        -- place the die in the tray and lock it
-        object.setPosition({-15.00 + 2 * ((intShopDice - 1) % 4), 1.75, -9.00 + 2 * (math.floor((intShopDice - 1) / 4))})
+            -- prep the counter to arrange dice nicely
+            intShopDice = intShopDice + 1
 
-        -- to unify rotation, get and set the die value. This rotates the die
-        -- to be square and keep it's value
-        object.setValue(object.getValue())
+            -- place the die in the tray and lock it
+            object.setPosition({-15.00 + 2 * ((intShopDice - 1) % 4), 1.75, -9.00 + 2 * (math.floor((intShopDice - 1) / 4))})
 
-        object.setLock(true)
+            -- to unify rotation, get and set the die value. This rotates the die
+            -- to be square and keep it's value
+            object.setValue(object.getValue())
 
-        -- Voyage dice will add more standard dice to the roll pool
-        if object.getName() == 'Voyage' and object.getValue() == 6 then
-            addRollDice(true, 1, 2)
-        end
+            object.setLock(true)
 
-        -- Decree dice will allow you to take a tile when locked
-        if object.getName() == 'Decree' and object.getValue() == 1 then
-            broadcastToAll('You can take any tile you do not own from another player!', {1,1,1})
-        end
+            -- Voyage dice will add more standard dice to the roll pool
+            if object.getName() == 'Voyage' and object.getValue() == 6 then
+                addRollDice(true, 1, 2)
+            end
 
-        -- If the turn owner has an unused herder, check for flip
-        if booHerderEligibility then
-            for _, pip in ipairs(tblHerderEligibility) do
-                if getPipCount(object) == pip then
-                    activateRollHerder(colCurrentPlayer)
-                    break
+            -- Decree dice will allow you to take a tile when locked
+            if object.getName() == 'Decree' and object.getValue() == 1 then
+                broadcastToAll('You can take any tile you do not own from another player!', {1,1,1})
+            end
+
+            -- If the turn owner has an unused herder, check for flip
+            if booHerderEligibility then
+                for _, pip in ipairs(tblHerderEligibility) do
+                    if getPipCount(object) == pip then
+                        activateRollHerder(colCurrentPlayer)
+                        break
+                    end
                 end
             end
-        end
 
-        -- No matter what, add die value to the table to allow for rollRemaining function
-        table.insert(tblHerderEligibility, getPipCount(object))
+            -- No matter what, add die value to the table to allow for rollRemaining function
+            table.insert(tblHerderEligibility, getPipCount(object))
 
-        tblLocked = {}
-        intOnes = 0
-        intTwos = 0
-        intThrees = 0
-        intFours = 0
-        intFives = 0
-        intSixes = 0
-        intPips = 0
+            tblLocked = {}
+            intOnes = 0
+            intTwos = 0
+            intThrees = 0
+            intFours = 0
+            intFives = 0
+            intSixes = 0
+            intPips = 0
 
-        -- Convert the dice values to number of pips.
-        for _, obj in ipairs(zonShop.getObjects()) do
-            table.insert(tblLocked, getPipCount(obj))
-        end
-
-        -- Convert the number of pips into reporting
-        for _, val in ipairs(tblLocked) do
-            if val == 1 then
-                intOnes = intOnes + 1
-                intPips = intPips + 1
-            elseif val == 2 then
-                intTwos = intTwos + 1
-                intPips = intPips + 2
-            elseif val == 3 then
-                intThrees = intThrees + 1
-                intPips = intPips + 3
-            elseif val == 4 then
-                intFours = intFours + 1
-                intPips = intPips + 4
-            elseif val == 5 then
-                intFives = intFives + 1
-                intPips = intPips + 5
-            elseif val == 6 then
-                intSixes = intSixes + 1
-                intPips = intPips + 6
+            -- Convert the dice values to number of pips.
+            for _, obj in ipairs(zonShop.getObjects()) do
+                table.insert(tblLocked, getPipCount(obj))
             end
-        end
 
-        txtShop.setValue('SHOP CONTENTS:\n1\'s:  ' .. intOnes .. '\n2\'s:  ' .. intTwos .. '\n3\'s:  ' .. intThrees ..'\n4\'s:  ' .. intFours ..'\n5\'s:  ' .. intFives ..'\n6\'s:  ' .. intSixes .. '\nPips:  ' .. intPips)
+            -- Convert the number of pips into reporting
+            for _, val in ipairs(tblLocked) do
+                if val == 1 then
+                    intOnes = intOnes + 1
+                    intPips = intPips + 1
+                elseif val == 2 then
+                    intTwos = intTwos + 1
+                    intPips = intPips + 2
+                elseif val == 3 then
+                    intThrees = intThrees + 1
+                    intPips = intPips + 3
+                elseif val == 4 then
+                    intFours = intFours + 1
+                    intPips = intPips + 4
+                elseif val == 5 then
+                    intFives = intFives + 1
+                    intPips = intPips + 5
+                elseif val == 6 then
+                    intSixes = intSixes + 1
+                    intPips = intPips + 6
+                end
+            end
+
+            txtShop.setValue('SHOP CONTENTS:\n1\'s:  ' .. intOnes .. '\n2\'s:  ' .. intTwos .. '\n3\'s:  ' .. intThrees ..'\n4\'s:  ' .. intFours ..'\n5\'s:  ' .. intFives ..'\n6\'s:  ' .. intSixes .. '\nPips:  ' .. intPips)
+        end
     end
 end
 
@@ -1009,7 +1126,9 @@ function rollRemaining(object, color, altClick)
     -- the intImmediates are used to avoid dice attempting to occupy the same space for a frame
     intImmediates = 0
 
-    if #zonRoll.getObjects() == 0 then
+    if tblRollPenalty[color] > 0 then
+        broadca1tToColor('You have an outstanding penatly of ' .. tblRollPenalty[color] .. ' dice. Move dice to the shop to remove them from this turn\'s roll.', color, {1, 1, 1})
+    elseif #zonRoll.getObjects() == 0 then
         broadcastToColor('You don\'t have any more dice!', color, {1, 1, 1})
     else
         for _, die in ipairs(zonRoll.getObjects()) do
@@ -1041,8 +1160,6 @@ function rollRemaining(object, color, altClick)
                     Wait.time(function() die.roll() end, 1)
                     Wait.time(function() die.roll() end, 1.5)
                     Wait.time(function() die.roll() end, 2)
-                    Wait.time(function() die.roll() end, 2.5)
-                    Wait.time(function() die.roll() end, 3)
                 end
             else
                 broadcastToColor('You must lock a die before rolling again.', color, {1, 1, 1})
@@ -1077,7 +1194,7 @@ function buyCard(obj, color, booOverride)
     end
 
     if intOverTR > 0 then
-        if math.abs(obj.getPosition()[1] + 22.95) <= 0.01 then
+        if _testNearZero(obj.getPosition()[1] + 22.95) then
             booOwned = true -- appropriate booOwned - treasure can't buy Reds
         else
             intOverTR = intOverTR - 1
@@ -1111,9 +1228,9 @@ function buyCard(obj, color, booOverride)
             end
 
             -- Blue cards give 1 scarab, red cards give 2 scarabs
-            if math.abs(obj.getPosition()[1] + 29.00) <= 0.01 then
+            if _testNearZero(obj.getPosition()[1] + 29.00) then
                 gainScarab(obj, color)
-            elseif math.abs(obj.getPosition()[1] + 22.95) <= 0.01 then
+            elseif _testNearZero(obj.getPosition()[1] + 22.95) then
                 gainScarab(obj, color)
                 gainScarab(obj, color)
             end
@@ -1128,7 +1245,7 @@ function buyCard(obj, color, booOverride)
                 -- Flip the corresponding owned card
                 for _, card in ipairs(tblZonOwned[color].getObjects()) do
                     if card.getName() == 'Bad Omen' then
-                        card.setRotation({0, 180, 180})
+                        card.setRotation({0, 0, 0})
                         break
                     end
                 end
@@ -1167,16 +1284,16 @@ function buyCard(obj, color, booOverride)
 
             --Omen, Good Omen, and Queen's Favor give buyer another turn
             if obj.getName() == 'Omen' then
-                objOwned.setRotation({0, 180, 180})
-                tblRollPenalty[color] = tblRollPenalty[color] + 1
-                prepTurn(colCurrentPlayer)
+                objOwned.setRotation({0, 0, 0})
+                tblOmenPenalty[color] = true
+                Wait.time(function() prepTurn(colCurrentPlayer) end, 1)
 
             elseif obj.getName() == 'Good Omen' then
-                objOwned.setRotation({0, 180, 180})
-                prepTurn(colCurrentPlayer)
+                objOwned.setRotation({0, 0, 0})
+                Wait.time(function() prepTurn(colCurrentPlayer) end, 1)
 
             elseif obj.getName() == 'Secret Passage' then
-                objOwned.setRotation({0, 180, 180})
+                objOwned.setRotation({0, 0, 0})
                 intOverSP = 2
 
                 colCurrentPlayer = getNextPlayer()
@@ -1184,14 +1301,14 @@ function buyCard(obj, color, booOverride)
                 broadcastToColor('Buy two free Tier 3 tiles. If buying Omen, buy it last!', color, {1, 1, 1})
 
             elseif obj.getName() == 'Queen\'s Favor' then
-                objOwned.setRotation({0, 180, 180})
+                objOwned.setRotation({0, 0, 0})
                 intOverQF = 1
 
                 prepDelayedTurnButton(color)
                 broadcastToColor('Buy a free Blue or Yellow Tier 6 or below.', color, {1, 1, 1})
 
             elseif obj.getName() == 'Royal Death' then
-                objOwned.setRotation({0, 180, 180})
+                objOwned.setRotation({0, 0, 0})
                 booRD = false
                 for _, col in ipairs(tblPlayers) do
                     if col == colCurrentPlayer then
@@ -1204,11 +1321,12 @@ function buyCard(obj, color, booOverride)
                 end
                 booFinalRollOff = true
                 prepFinalRollOff()
-                broadcastToAll('The final roll-off has begun!', {1, 1, 1})
+                broadcastToAll('A royal death?!? The final roll-off has begun!', {1, 1, 1})
                 Wait.time(function() prepTurn(colCurrentPlayer) end, 1)
+                addRollDice(true, 2, 2)
 
             elseif obj.getName() == 'Royal Power' then
-                objOwned.setRotation({0, 180, 180})
+                objOwned.setRotation({0, 0, 0})
                 intOverRP = 2
 
                 colCurrentPlayer = getNextPlayer()
@@ -1238,7 +1356,7 @@ function buyCard(obj, color, booOverride)
                 -- Flip the corresponding owned card
                 for _, card in ipairs(tblZonOwned[color].getObjects()) do
                     if card.getName() == 'Treasure' then
-                        card.setRotation({0, 180, 180})
+                        card.setRotation({0, 0, 0})
                         break
                     end
                 end
@@ -1400,7 +1518,6 @@ end
 
 function prepTurnDelayed(object, color, altClick)
     prepTurn(colNextPlayerOffset)
-    --Button hiding was moved to prepTurn function
 end
 
 function testUseTreasure(color)
