@@ -712,7 +712,6 @@ function prepTurn(color)
     end
 
     --If the owner is affected by an omen, delete a standard die
-    broadcastToAll(tblOmenPenalty[color], {1, 1, 1})
     if tblOmenPenalty[color] then
         --have to delay enforcing omen penalty, as dice are not in zone at spawn
         Wait.time(function() enactOmenPenalty(color) end, 1)
@@ -1218,6 +1217,7 @@ function buyCard(obj, color, booOverride)
         objOwned.setTags({'Cards'})
         objOwned.setDescription('')
 
+
         if obj.getName() ~= 'Start' then
             intRemain = string.sub(obj.getDescription(), 1, 1) - 1
 
@@ -1235,8 +1235,15 @@ function buyCard(obj, color, booOverride)
                 gainScarab(obj, color)
             end
 
-            -- If using the bad omen, use before testing potential buy complications
-            if testUseBadOmen(color) then
+            -- The two-part Bad Omen test is done on buying. The testUseBadOmen
+            -- will run on all buys. The test is outside the next if block as
+            -- Bad Omen does not affect the buy process.
+            if obj.getName() == 'Bad Omen' and tblCoinBadOmen[color].getValue() == 1 then
+                -- wrap the activation in a wait to allow card to enter inventory
+                Wait.time(function() activateBadOmen(color) end, 1)
+
+            elseif testUseBadOmen(color) then
+                activateBadOmen(color)
                 -- Flip the coin, lock it, and prevent it from being used again
                 tblCoinBadOmen[color].setValue(2)
                 tblCoinBadOmen[color].setLock(true)
@@ -1292,14 +1299,6 @@ function buyCard(obj, color, booOverride)
                 objOwned.setRotation({0, 0, 0})
                 Wait.time(function() prepTurn(colCurrentPlayer) end, 1)
 
-            elseif obj.getName() == 'Secret Passage' then
-                objOwned.setRotation({0, 0, 0})
-                intOverSP = 2
-
-                colCurrentPlayer = getNextPlayer()
-                prepDelayedTurnButton(colCurrentPlayer)
-                broadcastToColor('Buy two free Tier 3 tiles. If buying Omen, buy it last!', color, {1, 1, 1})
-
             elseif obj.getName() == 'Queen\'s Favor' then
                 objOwned.setRotation({0, 0, 0})
                 intOverQF = 1
@@ -1307,6 +1306,7 @@ function buyCard(obj, color, booOverride)
                 prepDelayedTurnButton(color)
                 broadcastToColor('Buy a free Blue or Yellow Tier 6 or below.', color, {1, 1, 1})
 
+            -- Royal Death starts the final roll-off, beginning with the buyer.
             elseif obj.getName() == 'Royal Death' then
                 objOwned.setRotation({0, 0, 0})
                 booRD = false
@@ -1325,6 +1325,15 @@ function buyCard(obj, color, booOverride)
                 Wait.time(function() prepTurn(colCurrentPlayer) end, 1)
                 addRollDice(true, 2, 2)
 
+            -- Secret Passage, Royal Power, Treasure
+            elseif obj.getName() == 'Secret Passage' then
+                objOwned.setRotation({0, 0, 0})
+                intOverSP = 2
+
+                colCurrentPlayer = getNextPlayer()
+                prepDelayedTurnButton(colCurrentPlayer)
+                broadcastToColor('Buy two free Tier 3 tiles. If buying Omen, buy it last!', color, {1, 1, 1})
+
             elseif obj.getName() == 'Royal Power' then
                 objOwned.setRotation({0, 0, 0})
                 intOverRP = 2
@@ -1332,10 +1341,6 @@ function buyCard(obj, color, booOverride)
                 colCurrentPlayer = getNextPlayer()
                 prepDelayedTurnButton(colCurrentPlayer)
                 broadcastToColor('Buy two free Blues Tier 6 or below.', color, {1, 1, 1})
-
-            -- booOverride is used when buying multiple - it avoids prepTurn calls
-            elseif booOverride then
-                do end
 
             -- The second purchase of Treasure needs the shop cleared
             elseif intOverTR > 0 then
@@ -1347,36 +1352,18 @@ function buyCard(obj, color, booOverride)
                     obj.destruct()
                 end
 
+            -- The two-part Tresure test is done on buying. The testUseTreasure
+            -- allows for activations on future turns.
+            elseif obj.getName() == 'Treasure' and tblCoinTreasure[color].getValue() == 1 then
+                -- wrap the activation in a wait to allow card to enter inventory
+                Wait.time(function() activateTreasure(color) end, 1)
+
             elseif testUseTreasure(color) then
-                -- Reset placement counters for shop, roll zones, roll count
-                tblCoinTreasure[color].setValue(2)
-                tblCoinTreasure[color].setLock(true)
-                tblCoinTreasure[color].setInvisibleTo(tblPossibleColors)
+                activateTresure(color)
 
-                -- Flip the corresponding owned card
-                for _, card in ipairs(tblZonOwned[color].getObjects()) do
-                    if card.getName() == 'Treasure' then
-                        card.setRotation({0, 0, 0})
-                        break
-                    end
-                end
-
-                intOverTR = 2
-                intShopDice = 0
-                intRollDice = 0
-                intRolls = 0
-
-                -- Delete any dice from the roll zone
-                for _, obj in ipairs(zonRoll.getObjects()) do
-                    obj.destruct()
-                end
-
-                for _, obj in ipairs(zonShop.getObjects()) do
-                    obj.translate({20, 0, 0})
-                end
-
-                broadcastToColor('Two yellow or blue buys with your current dice!', color, {1, 1, 1})
-                prepDelayedTurnButton(colCurrentPlayer)
+            -- booOverride is used when buying multiple - it avoids prepTurn calls
+            elseif booOverride then
+                do end
 
             else
                 colCurrentPlayer = getNextPlayer()
@@ -1542,6 +1529,61 @@ function testUseBadOmen(color)
     end
 
     return false
+end
+
+function activateTreasure(color)
+    -- Reset placement counters for shop, roll zones, roll count
+    tblCoinTreasure[color].setValue(2)
+    tblCoinTreasure[color].setLock(true)
+    tblCoinTreasure[color].setInvisibleTo(tblPossibleColors)
+
+    -- Flip the corresponding owned card
+    for _, card in ipairs(tblZonOwned[color].getObjects()) do
+        if card.getName() == 'Treasure' then
+            card.setRotation({0, 0, 0})
+            break
+        end
+    end
+
+    intOverTR = 2
+    intShopDice = 0
+    intRollDice = 0
+    intRolls = 0
+
+    -- Delete any dice from the roll zone
+    for _, obj in ipairs(zonRoll.getObjects()) do
+        obj.destruct()
+    end
+
+    for _, obj in ipairs(zonShop.getObjects()) do
+        obj.translate({20, 0, 0})
+    end
+
+    broadcastToColor('Two yellow or blue buys with your current dice!', color, {1, 1, 1})
+    prepDelayedTurnButton(colCurrentPlayer)
+end
+
+function activateBadOmen(color)
+    -- Flip the coin, lock it, and prevent it from being used again
+    tblCoinBadOmen[color].setValue(2)
+    tblCoinBadOmen[color].setLock(true)
+    tblCoinBadOmen[color].setInvisibleTo(tblPossibleColors)
+
+    -- Flip the corresponding owned card
+    for _, card in ipairs(tblZonOwned[color].getObjects()) do
+        if card.getName() == 'Bad Omen' then
+            card.setRotation({0, 0, 0})
+            break
+        end
+    end
+
+    for _, col in ipairs(tblPlayers) do
+        if col == color then
+            tblRollBonus[color] = tblRollBonus[color] + 1
+        else
+            tblRollPenalty[color] = tblRollPenalty[color] + 2
+        end
+    end
 end
 
 -- testBuy NOTES
