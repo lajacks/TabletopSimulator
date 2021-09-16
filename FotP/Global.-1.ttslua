@@ -790,7 +790,6 @@ end
 -- The way omen works, we need to delay checking the zone for dice. This function is awaited to allow for gamestate to settle.
 function enactOmenPenalty(color)
     for _, die in ipairs(zonRoll.getObjects()) do
-        broadcastToAll(die.getName(), {1, 1, 1})
         if die.getName() == 'Standard' then
             die.destruct()
             tblOmenPenalty[color] = false
@@ -1195,6 +1194,7 @@ function buyCard(obj, color, booOverride)
     if intOverTR > 0 then
         if _testNearZero(obj.getPosition()[1] + 22.95) then
             booOwned = true -- appropriate booOwned - treasure can't buy Reds
+            broadcastToColor('Treasure only buys blue or yellow cards!', color, {1, 1, 1})
         else
             intOverTR = intOverTR - 1
         end
@@ -1240,30 +1240,10 @@ function buyCard(obj, color, booOverride)
             -- Bad Omen does not affect the buy process.
             if obj.getName() == 'Bad Omen' and tblCoinBadOmen[color].getValue() == 1 then
                 -- wrap the activation in a wait to allow card to enter inventory
-                Wait.time(function() activateBadOmen(color) end, 1)
+                Wait.time(function() activateBadOmen(color) end, 0.5)
 
             elseif testUseBadOmen(color) then
                 activateBadOmen(color)
-                -- Flip the coin, lock it, and prevent it from being used again
-                tblCoinBadOmen[color].setValue(2)
-                tblCoinBadOmen[color].setLock(true)
-                tblCoinBadOmen[color].setInvisibleTo(tblPossibleColors)
-
-                -- Flip the corresponding owned card
-                for _, card in ipairs(tblZonOwned[color].getObjects()) do
-                    if card.getName() == 'Bad Omen' then
-                        card.setRotation({0, 0, 0})
-                        break
-                    end
-                end
-
-                for _, col in ipairs(tblPlayers) do
-                    if col == color then
-                        tblRollBonus[color] = tblRollBonus[color] + 1
-                    else
-                        tblRollPenalty[color] = tblRollPenalty[color] + 2
-                    end
-                end
             end
 
             -- Different effects for specific Cards
@@ -1303,7 +1283,10 @@ function buyCard(obj, color, booOverride)
                 objOwned.setRotation({0, 0, 0})
                 intOverQF = 1
 
-                prepDelayedTurnButton(color)
+                -- Remove the dice from the shop to prevent other buys
+                resetShop(true)
+
+                prepDelayedTurnButton()
                 broadcastToColor('Buy a free Blue or Yellow Tier 6 or below.', color, {1, 1, 1})
 
             -- Royal Death starts the final roll-off, beginning with the buyer.
@@ -1313,8 +1296,7 @@ function buyCard(obj, color, booOverride)
                 for _, col in ipairs(tblPlayers) do
                     if col == colCurrentPlayer then
                         booRD = true
-                    end
-                    if booRD then
+                    elseif booRD then
                         tblRollBonus[col] = tblRollBonus[col] + 1
                         broadcastToColor('Because you haven\'t gone yet, you have +1 dice for the final roll-off.', col, {1, 1, 1})
                     end
@@ -1330,27 +1312,25 @@ function buyCard(obj, color, booOverride)
                 objOwned.setRotation({0, 0, 0})
                 intOverSP = 2
 
-                colCurrentPlayer = getNextPlayer()
-                prepDelayedTurnButton(colCurrentPlayer)
+                -- Remove the dice from the shop to prevent other buys
+                resetShop(true)
+
+                prepDelayedTurnButton()
                 broadcastToColor('Buy two free Tier 3 tiles. If buying Omen, buy it last!', color, {1, 1, 1})
 
             elseif obj.getName() == 'Royal Power' then
                 objOwned.setRotation({0, 0, 0})
                 intOverRP = 2
 
-                colCurrentPlayer = getNextPlayer()
-                prepDelayedTurnButton(colCurrentPlayer)
+                -- Remove the dice from the shop to prevent other buys
+                resetShop(true)
+
+                prepDelayedTurnButton()
                 broadcastToColor('Buy two free Blues Tier 6 or below.', color, {1, 1, 1})
 
             -- The second purchase of Treasure needs the shop cleared
             elseif intOverTR > 0 then
-                intShopDice = 0
-                intRollDice = 0
-                intRolls = 0
-
-                for _, obj in ipairs(zonShop.getObjects()) do
-                    obj.destruct()
-                end
+                resetShop(true)
 
             -- The two-part Tresure test is done on buying. The testUseTreasure
             -- allows for activations on future turns.
@@ -1359,7 +1339,7 @@ function buyCard(obj, color, booOverride)
                 Wait.time(function() activateTreasure(color) end, 1)
 
             elseif testUseTreasure(color) then
-                activateTresure(color)
+                activateTreasure(color)
 
             -- booOverride is used when buying multiple - it avoids prepTurn calls
             elseif booOverride then
@@ -1498,8 +1478,8 @@ function countScarabs(color)
     return intCount
 end
 
-function prepDelayedTurnButton(color)
-    colNextPlayerOffset = color
+function prepDelayedTurnButton()
+    colNextPlayerOffset = getNextPlayer()
     btnPassTurnDelayed.setInvisibleTo({})
 end
 
@@ -1545,22 +1525,23 @@ function activateTreasure(color)
         end
     end
 
+    -- Reset shop values, but do not wipe dice
+    resetShop(false)
     intOverTR = 2
-    intShopDice = 0
-    intRollDice = 0
-    intRolls = 0
 
     -- Delete any dice from the roll zone
     for _, obj in ipairs(zonRoll.getObjects()) do
         obj.destruct()
     end
 
+    -- Move and unlock the dice from the shop
     for _, obj in ipairs(zonShop.getObjects()) do
         obj.translate({20, 0, 0})
+        obj.setLock(false)
     end
 
     broadcastToColor('Two yellow or blue buys with your current dice!', color, {1, 1, 1})
-    prepDelayedTurnButton(colCurrentPlayer)
+    prepDelayedTurnButton()
 end
 
 function activateBadOmen(color)
@@ -1579,11 +1560,33 @@ function activateBadOmen(color)
 
     for _, col in ipairs(tblPlayers) do
         if col == color then
-            tblRollBonus[color] = tblRollBonus[color] + 1
+            tblRollBonus[col] = tblRollBonus[col] + 1
         else
-            tblRollPenalty[color] = tblRollPenalty[color] + 2
+            tblRollPenalty[col] = tblRollPenalty[col] + 2
         end
     end
+end
+
+function resetShop(booClearDice)
+    intOnes = 0
+    intTwos = 0
+    intThrees = 0
+    intFours = 0
+    intFives = 0
+    intSixes = 0
+    intPips = 0
+
+    intShopDice = 0
+    intRollDice = 0
+    intRolls = 0
+
+    if booClearDice then
+        for _, die in ipairs(zonShop.getObjects()) do
+            die.destruct()
+        end
+    end
+
+    txtShop.setValue('SHOP CONTENTS:\n1\'s:  ' .. intOnes .. '\n2\'s:  ' .. intTwos .. '\n3\'s:  ' .. intThrees ..'\n4\'s:  ' .. intFours ..'\n5\'s:  ' .. intFives ..'\n6\'s:  ' .. intSixes .. '\nPips:  ' .. intPips)
 end
 
 -- testBuy NOTES
@@ -1828,7 +1831,7 @@ function wrapBuyTier6A3(object, color, altClick)
 
     elseif intOverRP > 0 then
         intOverRP = intOverRP - 1
-        buyCard(tblShopCards[12], color, true)
+        buyCard(tblShopCards[12], color, intOverRP > 0)
 
     elseif testBuy({'4a0', '2a0'}) then
         buyCard(tblShopCards[12], color, false)
@@ -1869,7 +1872,7 @@ function wrapBuyTier6B3(object, color, altClick)
 
     elseif intOverRP > 0 then
         intOverRP = intOverRP - 1
-        buyCard(tblShopCards[12], color, true)
+        buyCard(tblShopCards[12], color, intOverRP > 0)
 
     elseif testBuy({'3a0', '3a0'}) then
         buyCard(tblShopCards[12], color, false)
@@ -1918,7 +1921,7 @@ function wrapBuyTier5A3(object, color, altClick)
 
     elseif intOverRP > 0 then
         intOverRP = intOverRP - 1
-        buyCard(tblShopCards[13], color, true)
+        buyCard(tblShopCards[13], color, intOverRP > 0)
 
     elseif testBuy({'3a0', '2a0'}) then
         buyCard(tblShopCards[13], color, false)
@@ -1959,7 +1962,7 @@ function wrapBuyTier5B3(object, color, altClick)
 
     elseif intOverRP > 0 then
         intOverRP = intOverRP - 1
-        buyCard(tblShopCards[13], color, true)
+        buyCard(tblShopCards[13], color, intOverRP > 0)
 
     elseif testBuy({'3a6', '2a1'}) then
         buyCard(tblShopCards[13], color, false)
@@ -2008,7 +2011,7 @@ function wrapBuyTier4A3(object, color, altClick)
 
     elseif intOverRP > 0 then
         intOverRP = intOverRP - 1
-        buyCard(tblShopCards[14], color, true)
+        buyCard(tblShopCards[14], color, intOverRP > 0)
 
     elseif testBuy({'2a0', '2a0'}) then
         buyCard(tblShopCards[14], color, false)
@@ -2049,7 +2052,7 @@ function wrapBuyTier4B3(object, color, altClick)
 
     elseif intOverRP > 0 then
         intOverRP = intOverRP - 1
-        buyCard(tblShopCards[14], color, true)
+        buyCard(tblShopCards[14], color, intOverRP > 0)
 
     elseif testBuy({'2a6', '2a1'}) then
         buyCard(tblShopCards[14], color, false)
@@ -2074,7 +2077,7 @@ function wrapBuyTier3A1(object, color, altClick)
 
     elseif intOverSP > 0 then
         intOverSP = intOverSP - 1
-        buyCard(tblShopCards[9], color, true)
+        buyCard(tblShopCards[9], color, intOverSP > 0)
 
     elseif testBuy({'3a0'}) then
         buyCard(tblShopCards[9], color, false)
@@ -2090,7 +2093,7 @@ function wrapBuyTier3A2(object, color, altClick)
 
     elseif intOverSP > 0 then
         intOverSP = intOverSP - 1
-        buyCard(tblShopCards[10], color, true)
+        buyCard(tblShopCards[10], color, intOverSP > 0)
 
     elseif testBuy({'2a0'}) then
         buyCard(tblShopCards[10], color, false)
@@ -2106,11 +2109,11 @@ function wrapBuyTier3A3(object, color, altClick)
 
     elseif intOverRP > 0 then
         intOverRP = intOverRP - 1
-        buyCard(tblShopCards[15], color, true)
+        buyCard(tblShopCards[15], color, intOverRP > 0)
 
     elseif intOverSP > 0 then
         intOverSP = intOverSP - 1
-        buyCard(tblShopCards[15], color, true)
+        buyCard(tblShopCards[15], color, intOverSP > 0)
 
     elseif testBuy({'3e0'}) then
         buyCard(tblShopCards[15], color, false)
@@ -2122,7 +2125,7 @@ end
 function wrapBuyTier3A4(object, color, altClick)
     if intOverSP > 0 then
         intOverSP = intOverSP - 1
-        buyCard(tblShopCards[20], color, true)
+        buyCard(tblShopCards[20], color, intOverSP > 0)
 
     elseif intPips >= 10 then
         buyCard(tblShopCards[20], color, false)
@@ -2143,7 +2146,7 @@ function wrapBuyTier3B2(object, color, altClick)
 
     elseif intOverSP > 0 then
         intOverSP = intOverSP - 1
-        buyCard(tblShopCards[10], color, true)
+        buyCard(tblShopCards[10], color, intOverSP > 0)
 
     elseif testBuy({'3g4'}) then
         buyCard(tblShopCards[10], color, false)
@@ -2159,11 +2162,11 @@ function wrapBuyTier3B3(object, color, altClick)
 
     elseif intOverRP > 0 then
         intOverRP = intOverRP - 1
-        buyCard(tblShopCards[15], color, true)
+        buyCard(tblShopCards[15], color, intOverRP > 0)
 
     elseif intOverSP > 0 then
         intOverSP = intOverSP - 1
-        buyCard(tblShopCards[15], color, true)
+        buyCard(tblShopCards[15], color, intOverSP > 0)
 
     elseif testBuy({'3o0'}) then
         buyCard(tblShopCards[15], color, false)
@@ -2175,7 +2178,7 @@ end
 function wrapBuyTier3B4(object, color, altClick)
     if intOverSP > 0 then
         intOverSP = intOverSP - 1
-        buyCard(tblShopCards[9], color, true)
+        buyCard(tblShopCards[9], color, intOverSP > 0)
 
     elseif intPips >= 15 then
         buyCard(tblShopCards[20], color, false)
