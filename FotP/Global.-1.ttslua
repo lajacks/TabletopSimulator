@@ -97,7 +97,7 @@ function onLoad()
     tblHerderEligibility = {}
     intOverSP = 0
     intOverTR = 0
-    intOverQF = 0
+    booOverQF = false
     intOverRP = 0
     tblLocked = {}
     intOnes = 0
@@ -1125,7 +1125,7 @@ function rollRemaining(object, color, altClick)
     intImmediates = 0
 
     if tblRollPenalty[color] > 0 then
-        broadca1tToColor('You have an outstanding penatly of ' .. tblRollPenalty[color] .. ' dice. Move dice to the shop to remove them from this turn\'s roll.', color, {1, 1, 1})
+        broadcastToColor('You have an outstanding penatly of ' .. tblRollPenalty[color] .. ' dice. Move dice to the shop to remove them from this turn\'s roll.', color, {1, 1, 1})
     elseif #zonRoll.getObjects() == 0 then
         broadcastToColor('You don\'t have any more dice!', color, {1, 1, 1})
     else
@@ -1281,7 +1281,7 @@ function buyCard(obj, color, booOverride)
 
             elseif obj.getName() == 'Queen\'s Favor' then
                 objOwned.setRotation({0, 0, 0})
-                intOverQF = 1
+                booOverQF = true
 
                 -- Remove the dice from the shop to prevent other buys
                 resetShop(true)
@@ -1485,6 +1485,12 @@ end
 
 function prepTurnDelayed(object, color, altClick)
     prepTurn(colNextPlayerOffset)
+
+    -- And reset the special shop variables
+    intOverSP = 0
+    intOverTR = 0
+    booOverQF = false
+    intOverRP = 0
 end
 
 function testUseTreasure(color)
@@ -1801,9 +1807,9 @@ end
 
 -- Tier 6 A
 function wrapBuyTier6A1(object, color, altClick)
-    if intOverQF > 0 then
-        intOverQF = intOverQF - 1
-        buyCard(tblShopCards[3], color, true)
+    if booOverQF then
+        booOverQF = false
+        buyCard(tblShopCards[3], color, false)
 
     elseif testBuy({'6a0'}) then
         buyCard(tblShopCards[3], color, false)
@@ -1813,9 +1819,9 @@ function wrapBuyTier6A1(object, color, altClick)
 end
 
 function wrapBuyTier6A2(object, color, altClick)
-    if intOverQF > 0 then
-        intOverQF = intOverQF - 1
-        buyCard(tblShopCards[4], color, true)
+    if booOverQF then
+        booOverQF = false
+        buyCard(tblShopCards[4], color, false)
 
     elseif testBuy({'2a0', '2a0', '2a0'}) then
         buyCard(tblShopCards[4], color, false)
@@ -1825,9 +1831,9 @@ function wrapBuyTier6A2(object, color, altClick)
 end
 
 function wrapBuyTier6A3(object, color, altClick)
-    if intOverQF > 0 then
-        intOverQF = intOverQF - 1
-        buyCard(tblShopCards[12], color, true)
+    if booOverQF then
+        booOverQF = false
+        buyCard(tblShopCards[12], color, false)
 
     elseif intOverRP > 0 then
         intOverRP = intOverRP - 1
@@ -1854,9 +1860,9 @@ function wrapBuyTier6B1(object, color, altClick)
 end
 
 function wrapBuyTier6B2(object, color, altClick)
-    if intOverQF > 0 then
-        intOverQF = intOverQF - 1
-        buyCard(tblShopCards[4], color, true)
+    if booOverQF then
+        booOverQF = false
+        buyCard(tblShopCards[4], color, false)
 
     elseif testBuy({'6s0'}) then
         buyCard(tblShopCards[4], color, false)
@@ -1866,9 +1872,9 @@ function wrapBuyTier6B2(object, color, altClick)
 end
 
 function wrapBuyTier6B3(object, color, altClick)
-    if intOverQF > 0 then
-        intOverQF = intOverQF - 1
-        buyCard(tblShopCards[12], color, true)
+    if booOverQF then
+        booOverQF = false
+        buyCard(tblShopCards[12], color, false)
 
     elseif intOverRP > 0 then
         intOverRP = intOverRP - 1
@@ -1891,9 +1897,9 @@ end
 
 --Tier 5 A
 function wrapBuyTier5A1(object, color, altClick)
-    if intOverQF > 0 then
-        intOverQF = intOverQF - 1
-        buyCard(tblShopCards[5], color, true)
+    if booOverQF then
+        booOverQF = false
+        buyCard(tblShopCards[5], color, false)
 
     elseif testBuy({'5a0'}) then
         buyCard(tblShopCards[5], color, false)
@@ -1903,9 +1909,9 @@ function wrapBuyTier5A1(object, color, altClick)
 end
 
 function wrapBuyTier5A2(object, color, altClick)
-    if intOverQF > 0 then
-        intOverQF = intOverQF - 1
-        buyCard(tblShopCards[6], color, true)
+    if booOverQF then
+        booOverQF = false
+        buyCard(tblShopCards[6], color, false)
 
     elseif testBuy({'5s0'}) then
         buyCard(tblShopCards[6], color, false)
@@ -1915,9 +1921,9 @@ function wrapBuyTier5A2(object, color, altClick)
 end
 
 function wrapBuyTier5A3(object, color, altClick)
-    if intOverQF > 0 then
-        intOverQF = intOverQF - 1
-        buyCard(tblShopCards[13], color, true)
+    if booOverQF then
+        booOverQF = false
+        buyCard(tblShopCards[13], color, false)
 
     elseif intOverRP > 0 then
         intOverRP = intOverRP - 1
@@ -1944,9 +1950,9 @@ function wrapBuyTier5B1(object, color, altClick)
 end
 
 function wrapBuyTier5B2(object, color, altClick)
-    if intOverQF > 0 then
-        intOverQF = intOverQF - 1
-        buyCard(tblShopCards[6], color, true)
+    if booOverQF then
+        booOverQF = false
+        buyCard(tblShopCards[6], color, false)
 
     elseif testBuy({'5l2'}) then
         buyCard(tblShopCards[6], color, false)
@@ -1956,9 +1962,9 @@ function wrapBuyTier5B2(object, color, altClick)
 end
 
 function wrapBuyTier5B3(object, color, altClick)
-    if intOverQF > 0 then
-        intOverQF = intOverQF - 1
-        buyCard(tblShopCards[13], color, true)
+    if booOverQF then
+        booOverQF = false
+        buyCard(tblShopCards[13], color, false)
 
     elseif intOverRP > 0 then
         intOverRP = intOverRP - 1
@@ -1981,9 +1987,9 @@ end
 
 --Tier 4 A
 function wrapBuyTier4A1(object, color, altClick)
-    if intOverQF > 0 then
-        intOverQF = intOverQF - 1
-        buyCard(tblShopCards[7], color, true)
+    if booOverQF then
+        booOverQF = false
+        buyCard(tblShopCards[7], color, false)
 
     elseif testBuy({'4a0'}) then
         buyCard(tblShopCards[7], color, false)
@@ -1993,9 +1999,9 @@ function wrapBuyTier4A1(object, color, altClick)
 end
 
 function wrapBuyTier4A2(object, color, altClick)
-    if intOverQF > 0 then
-        intOverQF = intOverQF - 1
-        buyCard(tblShopCards[8], color, true)
+    if booOverQF then
+        booOverQF = false
+        buyCard(tblShopCards[8], color, false)
 
     elseif testBuy({'4s0'}) then
         buyCard(tblShopCards[8], color, false)
@@ -2005,9 +2011,9 @@ function wrapBuyTier4A2(object, color, altClick)
 end
 
 function wrapBuyTier4A3(object, color, altClick)
-    if intOverQF > 0 then
-        intOverQF = intOverQF - 1
-        buyCard(tblShopCards[14], color, true)
+    if booOverQF then
+        booOverQF = false
+        buyCard(tblShopCards[14], color, false)
 
     elseif intOverRP > 0 then
         intOverRP = intOverRP - 1
@@ -2034,9 +2040,9 @@ function wrapBuyTier4B1(object, color, altClick)
 end
 
 function wrapBuyTier4B2(object, color, altClick)
-    if intOverQF > 0 then
-        intOverQF = intOverQF - 1
-        buyCard(tblShopCards[8], color, true)
+    if booOverQF then
+        booOverQF = false
+        buyCard(tblShopCards[8], color, false)
 
     elseif testBuy({'4g5'}) then
         buyCard(tblShopCards[8], color, false)
@@ -2046,9 +2052,9 @@ function wrapBuyTier4B2(object, color, altClick)
 end
 
 function wrapBuyTier4B3(object, color, altClick)
-    if intOverQF > 0 then
-        intOverQF = intOverQF - 1
-        buyCard(tblShopCards[14], color, true)
+    if booOverQF then
+        booOverQF = false
+        buyCard(tblShopCards[14], color, false)
 
     elseif intOverRP > 0 then
         intOverRP = intOverRP - 1
@@ -2071,9 +2077,9 @@ end
 
 --Tier 3 A
 function wrapBuyTier3A1(object, color, altClick)
-    if intOverQF > 0 then
-        intOverQF = intOverQF - 1
-        buyCard(tblShopCards[9], color, true)
+    if booOverQF then
+        booOverQF = false
+        buyCard(tblShopCards[9], color, false)
 
     elseif intOverSP > 0 then
         intOverSP = intOverSP - 1
@@ -2087,9 +2093,9 @@ function wrapBuyTier3A1(object, color, altClick)
 end
 
 function wrapBuyTier3A2(object, color, altClick)
-    if intOverQF > 0 then
-        intOverQF = intOverQF - 1
-        buyCard(tblShopCards[10], color, true)
+    if booOverQF then
+        booOverQF = false
+        buyCard(tblShopCards[10], color, false)
 
     elseif intOverSP > 0 then
         intOverSP = intOverSP - 1
@@ -2103,9 +2109,9 @@ function wrapBuyTier3A2(object, color, altClick)
 end
 
 function wrapBuyTier3A3(object, color, altClick)
-    if intOverQF > 0 then
-        intOverQF = intOverQF - 1
-        buyCard(tblShopCards[15], color, true)
+    if booOverQF then
+        booOverQF = false
+        buyCard(tblShopCards[15], color, false)
 
     elseif intOverRP > 0 then
         intOverRP = intOverRP - 1
@@ -2140,9 +2146,9 @@ function wrapBuyTier3B1(object, color, altClick)
 end
 
 function wrapBuyTier3B2(object, color, altClick)
-    if intOverQF > 0 then
-        intOverQF = intOverQF - 1
-        buyCard(tblShopCards[10], color, true)
+    if booOverQF then
+        booOverQF = false
+        buyCard(tblShopCards[10], color, false)
 
     elseif intOverSP > 0 then
         intOverSP = intOverSP - 1
@@ -2156,9 +2162,9 @@ function wrapBuyTier3B2(object, color, altClick)
 end
 
 function wrapBuyTier3B3(object, color, altClick)
-    if intOverQF > 0 then
-        intOverQF = intOverQF - 1
-        buyCard(tblShopCards[15], color, true)
+    if booOverQF then
+        booOverQF = false
+        buyCard(tblShopCards[15], color, false)
 
     elseif intOverRP > 0 then
         intOverRP = intOverRP - 1
@@ -2178,7 +2184,7 @@ end
 function wrapBuyTier3B4(object, color, altClick)
     if intOverSP > 0 then
         intOverSP = intOverSP - 1
-        buyCard(tblShopCards[9], color, intOverSP > 0)
+        buyCard(tblShopCards[20], color, intOverSP > 0)
 
     elseif intPips >= 15 then
         buyCard(tblShopCards[20], color, false)
