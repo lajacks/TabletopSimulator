@@ -1,0 +1,7 @@
+function onload()
+  -- set the clickable area
+  self.createButton({
+    click_function="loadYear", function_owner=global,
+    position={0, 0, 0}, height=600, width=600, color={1,1,1,0}, label=""
+  })
+end

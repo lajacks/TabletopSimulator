@@ -1,0 +1,332 @@
+function onload()
+    objCount = getObjectFromGUID('2518f7')
+
+    -- tables of GUIDs for cards. Entries 1-7 are base game, 8-11 expansion.
+    tblLocGUID = {'685118','f808da', 'fc8635', '4e06f7', 'a3eaed', 'be114d', '27aea1', '853561', '877574', 'd5c024', 'd76986'}
+    tblShopGUID = {'d7d82f', '5620d7', '71e21f', 'ea0c9b', 'fde74c', '51deac', '76b60c', '53e6c8', '4fa878', '090df4', 'd9a335'}
+    tblDarkArtsGUID = {'f67a96', '9892cf', '6ac2ed', '1aecd5', '14d08b', '5242ce', 'c79e96', 'dbff2c', '326a58', 'f49e14', '2d3022'}
+    tblVillainGUID = {'2a4ab2', 'f80420', '5a527a', '5f2756', '41e6a1', '893166', '893166', '6dac15', '1fdd86', 'c33165', '8705da'}
+
+    -- These tables don't have a 1-1 ratio with years. Encounters are the
+    -- Horcruxes and then the scenarios for expansion.
+    tblVoldemortGUID = {'53e406', 'd43baf', '3f50cb', '3a7018'}
+    tblEncounterGUID = {'485e4b', '196e3c', 'de3c7a', 'a1bcc8', 'f7aeca'}
+
+    -- Proficiencies are stacked in a deck. The expansion Proficiency is a
+    -- single card. The Patronus cards are stacked in a deck.
+    strProficiencyGUID = 'a1912c'
+    strExpoProfGUID = '6e9677'
+    strPatronusGUID = '651585'
+
+    -- Inside collection order is Neville, Hermione, Ron, Harry, [Luna]
+    -- The heroes are stacked in a deck themselves. Having a decksize over 4 helps
+    -- with scripting, because when a collection is down to one item, it gets
+    -- a new GUID.
+    strHeroGUID = '996a83'
+    tblHeroDeckGUID = {'8cc160', '9aecd3', 'e8f714', '35406b', 'a7b4eb'}
+
+    -- Hufflepuff, Gryffindor, Slytherin, Ravenclaw, Monster
+    tblDiceGUID = {'7b8cdf', 'a05a59', 'd094e2', 'cffae7', 'f8c8fd'}
+
+    -- heart, coin, lightning, card
+    tblMarkerGUID = {'b40e3d', 'f4a89a', '2402fc', 'ff3dc1'}
+
+    -- CVs are Creature/Villains. They replace Villains
+    strPetrifyGUID = 'fc75dc'
+    strDetentionGUID = '7ad143'
+    strHarpGUID = 'bfe222'
+end
+
+-- Helper function for creating timers
+function CreateOneshotTimer(fcnName, parameters, delay)
+    Timer.create({
+        identifier = fcnName .. ' Timer', -- unique name
+        function_name = fcnName,    -- what it triggers
+        parameters = parameters,     -- pass parameters into fcnName
+        function_owner = Global,
+        delay = delay,              -- delay in seconds
+        repetitions = 1,            -- oneshot
+    })
+end
+
+function loadYear()
+    broadcastToAll('Please wait for the announcement... No touch!', {1,1,1})
+    year = objCount.Counter.getValue()
+
+    -- Limit the input to prevent overflowing loops
+    if year <= 0 then
+        objCount.Counter.setValue(1)
+        year = 1
+    elseif year >= 12 then
+        objCount.Counter.setValue(11)
+        year = 11
+    end
+
+    -- Set Voldemort, face up
+    if year == 5 or year == 8 then
+        getObjectFromGUID(tblVoldemortGUID[1]).setPosition({-12.33, 2, 11.59})
+    elseif year == 6 or year == 9 then
+        getObjectFromGUID(tblVoldemortGUID[2]).setPosition({-12.33, 2, 11.59})
+    elseif year == 7 or year == 10 then
+        getObjectFromGUID(tblVoldemortGUID[3]).setPosition({-12.33, 2, 11.59})
+    elseif year == 11 then
+        getObjectFromGUID(tblVoldemortGUID[4]).setPosition({-12.33, 2, 11.59})
+    end
+
+    -- Petrificus Totalus
+    if year >= 3 then
+        getObjectFromGUID(strPetrifyGUID).setPosition({22.00, 0.96, 10.00})
+        p2 = getObjectFromGUID(strPetrifyGUID).clone({position = {22.00, 0.96, 12.00}, rotation = {0, 180, 0}})
+    end
+
+    -- Dice
+    if year >= 4 then
+        getObjectFromGUID(tblDiceGUID[1]).setPosition({22.00, 1.52, 4.00})
+        getObjectFromGUID(tblDiceGUID[2]).setPosition({22.00, 1.52, 2.00})
+        getObjectFromGUID(tblDiceGUID[3]).setPosition({22.00, 1.52, 0})
+        getObjectFromGUID(tblDiceGUID[4]).setPosition({22.00, 1.52, -2.00})
+    end
+
+    -- Proficiencies
+    if year >= 6 then
+        deckProf = getObjectFromGUID(strProficiencyGUID)
+        tblProficiency = deckProf.getObjects()
+        for i, item in ipairs(tblProficiency) do
+            -- After pulling penultimate card, collection despawns and last remaining object spawns
+            -- To avoid nil references, pass the GUID to the finalPrep function
+            if i < #tblProficiency then
+                deckProf.takeObject({position = {(i * 6) - 30, 0.97, -10.00}, rotation = {0, 180, 0}, guid = item.guid})
+            end
+        end
+
+        profGUID = tblProficiency[#tblProficiency].guid
+    end
+
+    -- Tokens and Horcruxes/Encounters
+    if year >= 7 then
+        getObjectFromGUID(tblMarkerGUID[1]).setPosition({-20.00, 0.96, 14.00})
+        getObjectFromGUID(tblMarkerGUID[2]).setPosition({-20.00, 0.96, 12.00})
+        getObjectFromGUID(tblMarkerGUID[3]).setPosition({-20.00, 0.96, 10.00})
+        getObjectFromGUID(tblMarkerGUID[4]).setPosition({-20.00, 0.96, 8.00})
+
+        getObjectFromGUID(tblEncounterGUID[year - 6]).setPosition({-5.04, 1.99, 11.45})
+    end
+
+    -- Set Expansion (Expo) specific cards and trinkets
+    if year > 7 then
+
+        -- Remove Luna from year 6 deck
+        getObjectFromGUID(tblShopGUID[5]).takeObject({position = {114, 1, -20}, rotation = {0, 180, 180}})
+
+        -- Add detention, harp, monster die
+        getObjectFromGUID(strDetentionGUID).setPosition({18.00, 2.09, 20.74})
+        getObjectFromGUID(strHarpGUID).setPosition({24.00, 1.01, 11.00})
+        getObjectFromGUID(tblDiceGUID[5]).setPosition({22.00, 1.52, 6.00})
+
+        -- Add additional heart/card/zap/money markers for Encounters
+        getObjectFromGUID(tblMarkerGUID[1]).clone({position = {-22.00, 0.96, 14.00}})
+        getObjectFromGUID(tblMarkerGUID[1]).clone({position = {-24.00, 0.96, 14.00}})
+        getObjectFromGUID(tblMarkerGUID[2]).clone({position = {-22.00, 0.96, 12.00}})
+        getObjectFromGUID(tblMarkerGUID[2]).clone({position = {-24.00, 0.96, 12.00}})
+        getObjectFromGUID(tblMarkerGUID[3]).clone({position = {-22.00, 0.96, 10.00}})
+        getObjectFromGUID(tblMarkerGUID[3]).clone({position = {-24.00, 0.96, 10.00}})
+        getObjectFromGUID(tblMarkerGUID[4]).clone({position = {-22.00, 0.96, 8.00}})
+        getObjectFromGUID(tblMarkerGUID[4]).clone({position = {-24.00, 0.96, 8.00}})
+
+        -- Add the monster profession
+        getObjectFromGUID(strExpoProfGUID).setPosition({30, 0.97, 0})
+    end
+
+    -- Add shop, Dark Arts, Villains to raising stacks.
+    -- Shop and Dark arts are cumulative throughout. Villains only go up to
+    -- year 7. Expansions are handled in separate function.
+    -- Villains are flipped over to avoid mixing with Voldemort.
+
+    for i=1, year do
+        getObjectFromGUID(tblDarkArtsGUID[i]).setPosition({-3.65, 2 + i, 17.68})
+        getObjectFromGUID(tblShopGUID[i]).setPosition({12.26, 1 + i, 20.74})
+
+        if i <= 7 then
+            getObjectFromGUID(tblVillainGUID[i]).setPosition({-12.33, 2 + i, 11.59})
+            getObjectFromGUID(tblVillainGUID[i]).setRotation({0, 180, 180})
+        end
+    end
+
+    -- Either call the special setup for the expansion or finish up.
+    -- The special prep will call the finalPrep function at its end.
+    if year >= 8 then
+        CreateOneshotTimer('expoPrep', {pyear = year, prof = profGUID}, 3)
+    else
+        CreateOneshotTimer('finalPrep', {pyear = year, prof = profGUID}, 3)
+    end
+end
+
+function expoPrep(params)
+    -- Carry over the year and profGUID from earlier
+    year = params.pyear
+    profGUID = params.prof
+
+    -- First, take out any box-specific Villains
+    -- Because I replaced the base set villains, Box1 needs Basilisk and Dementor
+    -- Box2 needs Peter Pettigrew and Fenrir Greyback, Box3 needs Doloris Umbridge
+    -- The Villain cards are named.
+    tblReqVill = {}
+    tblVillains = getObjectFromGUID(tblVillainGUID[1]).getObjects()
+
+    if year == 8 then
+        -- ipairs returns index, value pairs from a table
+        for i, vill in ipairs(tblVillains) do
+            if vill.name == 'Basilisk' then
+                tempGUID = vill.guid
+            elseif vill.name == 'Dementor' then
+                tempGUID2 = vill.guid
+            end
+        end
+
+        tblReqVill[1] = getObjectFromGUID(tblVillainGUID[1]).takeObject({position = {-38.00, 0.97, 14.00}, rotation = {0, 180, 180}, guid = tempGUID})
+        tblReqVill[2] = getObjectFromGUID(tblVillainGUID[1]).takeObject({position = {-38.00, 0.97, 8.00}, rotation = {0, 180, 180}, guid = tempGUID2})
+
+    elseif year == 9 then
+        -- ipairs returns index, value pairs from a table
+        for i, vill in ipairs(tblVillains) do
+            if vill.name == 'Peter Pettigrew' then
+                tempGUID = vill.guid
+            elseif vill.name == 'Fenrir Greyback' then
+                tempGUID2 = vill.guid
+            end
+        end
+
+        tblReqVill[1] = getObjectFromGUID(tblVillainGUID[1]).takeObject({position = {-38.00, 0.97, 14.00}, rotation = {0, 180, 180}, guid = tempGUID})
+        tblReqVill[2] = getObjectFromGUID(tblVillainGUID[1]).takeObject({position = {-38.00, 0.97, 8.00}, rotation = {0, 180, 180}, guid = tempGUID2})
+
+    elseif year == 10 then
+        -- ipairs returns index, value pairs from a table
+        for i, vill in ipairs(tblVillains) do
+            if vill.name == 'Dolores Umbridge' then
+                tempGUID = vill.guid
+            end
+        end
+
+        tblReqVill[1] = getObjectFromGUID(tblVillainGUID[1]).takeObject({position = {-38.00, 0.97, 14.00}, rotation = {0, 180, 180}, guid = tempGUID})
+    end
+
+    -- Box1 needs five additional Villains. Increase by one each Box. Box4 needs 8.
+    -- Since we already drew some villains out, consider this in the count
+    -- There are 14 Villains in the base set. Shuffle, draw, and delete some.
+    getObjectFromGUID(tblVillainGUID[1]).shuffle()
+
+    for i=1, 17 - year - #tblReqVill do
+        cardTemp = getObjectFromGUID(tblVillainGUID[1]).takeObject({position = {-40.00, 0.97, 22.00}})
+        cardTemp.destruct()
+    end
+
+    -- Now add in the Box-Specific Villains
+    for i = 1, #tblReqVill do
+        tblReqVill[i].setPosition({-12.33, 2 + i, 11.59})
+    end
+
+    getObjectFromGUID(tblVillainGUID[year]).setPosition({-12.33, 5, 11.59})
+    getObjectFromGUID(tblVillainGUID[year]).setRotation({0, 180, 180})
+
+    -- Run the final preparation step for any missing cards.
+    CreateOneshotTimer('finalPrep', {pyear = year, prof = profGUID}, 3)
+end
+
+function finalPrep(params)
+    -- Carry over the year and profGUID from earlier
+    year = params.pyear
+    profGUID = params.prof
+
+    -- Shuffle all decks, flip shop and Dark Arts
+    getObjectFromGUID(tblDarkArtsGUID[1]).shuffle()
+    getObjectFromGUID(tblDarkArtsGUID[1]).setRotation({0, 180, 180})
+
+    getObjectFromGUID(tblShopGUID[1]).shuffle()
+    getObjectFromGUID(tblShopGUID[1]).setRotation({0, 180, 180})
+
+    -- Villain deck is already flipped to avoid mixing in Voldemort.
+    getObjectFromGUID(tblVillainGUID[1]).shuffle()
+
+    -- Place first shop tableau by drawing 6 cards
+    getObjectFromGUID(tblShopGUID[1]).takeObject({position = {9.17, 1.99, 14.31}, flip = true})
+    getObjectFromGUID(tblShopGUID[1]).takeObject({position = {9.17, 1.99, 7.88}, flip = true})
+    getObjectFromGUID(tblShopGUID[1]).takeObject({position = {9.07, 1.99, 1.52}, flip = true})
+    getObjectFromGUID(tblShopGUID[1]).takeObject({position = {15.47, 1.99, 14.29}, flip = true})
+    getObjectFromGUID(tblShopGUID[1]).takeObject({position = {15.34, 1.99, 7.87}, flip = true})
+    getObjectFromGUID(tblShopGUID[1]).takeObject({position = {15.42, 1.99, 1.49}, flip = true})
+
+    -- Place Villains. Always at least 1, 2 for years over 3, 3 for year 5+.
+    getObjectFromGUID(tblVillainGUID[1]).takeObject({position = {-12.44, 1.99, 4.78}, flip = true})
+    if year >= 3 then
+        getObjectFromGUID(tblVillainGUID[1]).takeObject({position = {-4.98, 1.99, 5.06}, flip = true})
+    end
+    if year >= 5 then
+        getObjectFromGUID(tblVillainGUID[1]).takeObject({position = {2.50, 1.99, 4.96}, flip = true})
+    end
+
+    -- Place location
+    getObjectFromGUID(tblLocGUID[year]).setPosition({-12.36, 2, 17.93})
+
+    -- If Proficiencies were included, the last one is delayed due to object spawning.
+    if year >= 6 then
+        getObjectFromGUID(profGUID).setPosition({24.00, 0.97, -10.00})
+    end
+
+    -- Randomize Characters
+    math.randomseed(os.time()) -- set a random seed (yay time!)
+    math.random() -- so, like, you need to "warm up" the randomizer...
+    math.random() -- Yeah. I know.
+
+    -- tblDeckPos is a table of deck locations per player color. tblHeroPos is similar.
+    tblHeroPos = {Red = {-30.25, 0.97, -15.50}, Green = {-8.25, 0.97, -15.50}, Blue = {13.75, 0.97, -15.50}, White = {35.75, 0.97, -15.50}}
+    tblDeckPos = {Red = {-41.25, 0.97, -21.00}, Green = {-19.25, 0.97, -21.00}, Blue = {2.75, 0.97, -21.00}, White = {24.75, 0.97, -21.00}}
+
+    -- countHero lists how many heroes  we have to choose from
+    -- countHero is 4, unless playing expansion games, where it is 5.
+    -- intHero is the offset to include, since all hero cards are stacked
+    countHero = 4
+
+    if year >= 8 then
+        intHero = 0
+        countHero = 5
+    elseif year == 7 then
+        intHero = 5
+    elseif year >= 3 then
+        intHero = 9
+    else
+        intHero = 13
+    end
+
+    tblPlayers = Player.getPlayers()
+
+    for i, play in ipairs(tblPlayers) do
+        -- Take a random number from 1 to the # of available heroes.
+        intSelection = math.random(1, countHero)
+
+        -- Pull that hero from the deck
+        colHero = getObjectFromGUID(strHeroGUID)
+        strSelectedGUID = colHero.getObjects()[intSelection + intHero].guid
+        colHero.takeObject({position = tblHeroPos[play.color], rotation = {0, 180, 0}, guid = strSelectedGUID})
+
+        -- Place the associated deck, flip, shuffle, and deal 5 to the hand
+        objDeck = getObjectFromGUID(tblHeroDeckGUID[intSelection])
+        objDeck.setPosition(tblDeckPos[play.color])
+        objDeck.setRotation({0, 180, 180})
+        objDeck.shuffle()
+        objDeck.deal(5, play.color, int)
+
+        -- If playing Box3 or Box4, add Patronus to Proficiency selection
+        if year >= 10 then
+            objProfDeck = getObjectFromGUID(strPatronusGUID)
+            objProfDeck.takeObject({position = {36, 0.97, 24 - (4 * countHero)}, rotation = {0, 180, 0}, index = countHero - intSelection})
+        end
+
+        -- Remove the hero deck from the code object  to realign tblHeroDeckGUID
+        -- with colHero. This is because colHero loses a member each time a hero
+        -- is drawn, tblHeroDeckGUID does not.
+        table.remove(tblHeroDeckGUID, intSelection)
+        countHero = countHero - 1
+    end
+
+    broadcastToAll('Preparation Complete! Enjoy your game!', {1,1,1})
+end
