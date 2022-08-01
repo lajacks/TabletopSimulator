@@ -377,13 +377,9 @@ function setUp(params)
     colNextPlayerOffset = 'Nobody'
 
     -- reset tblPlayers to have first player... first.
-    for i, col in ipairs(tblPlayers) do
-        if col == colCurrentPlayer then
-            break
-        end
-
-        table.remove(tblPlayers, 1)
-        table.insert(tblPlayers, col)
+    while tblPlayers[1] ~= colCurrentPlayer do
+        shuffleColor = table.remove(tblPlayers, 1)
+        table.insert(tblPlayers, shuffleColor)
     end
 
     for i, _ in ipairs(tblPlayers) do
@@ -592,6 +588,7 @@ function prepTurn(color)
 
     -- Check for any bonus dice or penalty dice.
     if tblRollBonus[color] > 0 then
+        broadcastToColor('You have a bonus die this turn!', color, {1, 1, 1})
         addRollDice(true, 1, tblRollBonus[color])
         tblRollBonus[color] = 0
     end
@@ -747,10 +744,19 @@ function testCardUsed(object)
     posx = object.getPosition()[1]
     posz = object.getPosition()[3]
 
+    if object.getName() == 'Granary Master' then
+        intChips = 2
+    else
+        intChips = 1
+    end
+
     for _, revChip in ipairs(tblUsedCardMarkers) do
         if _testNearZero(revChip.getPosition()[1] - 2 - posx) then
             if _testNearZero(revChip.getPosition()[3] - 1 - posz) then
-                return true
+                intChips = intChips - 1
+                if intChips == 0 then
+                    return true
+                end
             end
         end
     end
@@ -860,7 +866,6 @@ function activateRollCard(object, color, altClick)
                 addRollDice(false, 1, 1)
                 markCardUsed(object, color)
             elseif object.getName() == 'Granary Master' then
-                gainScarab(object, color)
                 addRollDice(false, 1, 1, math.min(intRolls, 6))
                 markCardUsed(object, color)
 
@@ -1094,6 +1099,7 @@ end
 -- object is parent object, color is who clicked, altClick is if they didn't left-click
 function loseScarab(object, color, altClick)
     booMessage = true
+    strMessage = 'You don\'t have that scarab token!'
 
     -- pip code
     if object.getGUID() == btnLoseScarabPip.getGUID() then
@@ -1106,6 +1112,8 @@ function loseScarab(object, color, altClick)
             else
                 obj.takeObject().destruct()
             end
+
+            strMessage = color .. ' has used a pip scarab token.'
 
             break
         end
@@ -1120,14 +1128,19 @@ function loseScarab(object, color, altClick)
                 obj.takeObject().destruct()
             end
 
+            strMessage = color .. ' has used a reroll scarab token.'
+
             break
         end
     end
 
     if booMessage then
         broadcastToColor('You don\'t have that scarab token!', color, {1, 1, 1})
+    else
+        broadcastToAll(strMessage, {1,1,1})
     end
 end
+
 
 -- Lock any Immediate dice, then roll the remainder
 function rollRemaining(object, color, altClick)
